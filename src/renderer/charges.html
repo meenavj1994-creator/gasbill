@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Charges — GasBill</title>
+<link rel="stylesheet" href="app.css" />
+</head>
+<body>
+<div class="app">
+  <header class="bar">
+    <div class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17h6M12 3s5 5.2 5 9a5 5 0 0 1-10 0c0-3.8 5-9 5-9Z"/></svg></div>
+    <span class="bar-name">Charges master</span>
+    <nav class="bar-nav"><a href="index.html" class="bar-link">Billing</a><a href="charges.html" class="bar-link active">Charges</a><a href="consumers.html" class="bar-link">Consumers</a><a href="reports.html" class="bar-link">Reports</a></nav>
+  </header>
+  <main class="sheet">
+    <div class="sheet-head">
+      <h1>Charges</h1>
+      <button id="show-new" type="button">New charge</button>
+    </div>
+
+    <div id="new-form" class="setup-section" hidden>
+      <div class="field">
+        <label for="n-desc">Description</label>
+        <input id="n-desc" />
+      </div>
+      <div class="field-grid">
+        <div class="field">
+          <label for="n-amount">Amount before tax</label>
+          <input id="n-amount" type="number" min="0" step="0.01" />
+        </div>
+        <div class="field">
+          <label for="n-rate">GST rate (%)</label>
+          <input id="n-rate" type="number" min="0" step="0.5" value="18" />
+        </div>
+      </div>
+      <div class="field">
+        <label for="n-from">Effective from</label>
+        <input id="n-from" type="date" />
+      </div>
+      <p class="error" id="new-error" hidden></p>
+      <div class="actions">
+        <button id="cancel-new" type="button">Cancel</button>
+        <button id="save-new" type="button" class="primary">Add charge</button>
+      </div>
+    </div>
+
+    <ul class="charge-list" id="charge-list"></ul>
+  </main>
+</div>
+<script src="charges.js"></script>
+</body>
+</html>

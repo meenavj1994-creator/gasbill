@@ -1,0 +1,68 @@
+{
+  "name": "gasbill",
+  "version": "0.1.0",
+  "description": "Offline GST tax invoicing for LPG distributors",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node tests/gst.test.js && node tests/repository.test.js && node tests/reports.test.js",
+    "dist": "electron-builder --win",
+    "test:extract": "node tests/extract.test.js",
+    "test:all": "npm test && npm run test:extract",
+    "postinstall": "electron-rebuild -f -w better-sqlite3",
+    "rebuild": "electron-rebuild -f -w better-sqlite3",
+    "rebuild:node": "npm rebuild better-sqlite3 --update-binary",
+    "pretest": "npm run rebuild:node",
+    "posttest": "npm run rebuild"
+  },
+  "dependencies": {
+    "@napi-rs/canvas": "^0.1.65",
+    "better-sqlite3": "^11.10.0",
+    "electron-updater": "^6.3.9",
+    "pdfjs-dist": "^4.8.69",
+    "puppeteer": "^25.10.0",
+    "tesseract.js": "^5.1.1",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^3.7.1",
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "in.gasbill.desktop",
+    "productName": "GasBill",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "package.json",
+      "resources/**/*"
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "GasBill"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "meenavj1994-creator",
+        "repo": "gasbill"
+      }
+    ],
+    "extraResources": [
+      {
+        "from": "resources",
+        "to": "resources"
+      }
+    ]
+  }
+}

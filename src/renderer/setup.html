@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Setup — GasBill</title>
+<link rel="stylesheet" href="app.css" />
+</head>
+<body>
+<div class="app">
+  <header class="bar">
+    <div class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17h6M12 3s5 5.2 5 9a5 5 0 0 1-10 0c0-3.8 5-9 5-9Z"/></svg></div>
+    <span class="bar-name">First-time setup</span>
+  </header>
+  <main class="sheet">
+    <div class="sheet-head">
+      <h1>Your business details</h1>
+      <span class="serial">5 steps</span>
+    </div>
+
+    <section class="setup-section">
+      <div class="setup-section-head">
+        <span class="setup-num">1</span>
+        <div>
+          <div class="setup-section-title">GST certificate</div>
+          <p class="setup-section-desc">Upload your REG-06 to fill the fields below, or skip and type them yourself.</p>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="cert-file">Certificate file</label>
+        <div class="row">
+          <input id="cert-file" type="file" accept=".pdf,.jpg,.jpeg,.png" />
+        </div>
+        <p class="hint" id="cert-result"></p>
+      </div>
+    </section>
+
+    <section class="setup-section">
+      <div class="setup-section-head">
+        <span class="setup-num">2</span>
+        <div>
+          <div class="setup-section-title">Business identity</div>
+          <p class="setup-section-desc">This is what prints on every tax invoice.</p>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="gstin">GSTIN</label>
+        <input id="gstin" maxlength="15" spellcheck="false" style="font-family:var(--mono);text-transform:uppercase" />
+        <p class="hint" id="gstin-result"></p>
+      </div>
+
+      <div class="field-grid">
+        <div class="field">
+          <label for="trade-name">Trade name — this prints on the invoice</label>
+          <input id="trade-name" />
+          <p class="error" id="trade-name-error" hidden></p>
+        </div>
+        <div class="field">
+          <label for="legal-name">Legal name</label>
+          <input id="legal-name" />
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="address">Address</label>
+        <input id="address" />
+        <p class="error" id="address-error" hidden></p>
+      </div>
+
+      <div class="field">
+        <label for="phone">Phone <span class="optional">optional</span></label>
+        <input id="phone" />
+      </div>
+    </section>
+
+    <section class="setup-section">
+      <div class="setup-section-head">
+        <span class="setup-num">3</span>
+        <div>
+          <div class="setup-section-title">Invoice numbering</div>
+          <p class="setup-section-desc">Rule 46(b) caps the invoice number at 16 characters.</p>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="prefix">Invoice series prefix</label>
+        <input id="prefix" value="BG" maxlength="6" style="font-family:var(--mono);text-transform:uppercase" />
+        <p class="hint" id="prefix-preview"></p>
+        <p class="error" id="prefix-error" hidden></p>
+      </div>
+    </section>
+
+    <section class="setup-section">
+      <div class="setup-section-head">
+        <span class="setup-num">4</span>
+        <div>
+          <div class="setup-section-title">Customer acknowledgement</div>
+          <p class="setup-section-desc">Printed on the distributor copy only, above the customer's signature.</p>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="ack">Acknowledgement wording</label>
+        <input id="ack" value="I confirm the service described above was carried out at my premises to my satisfaction, and that I have received the original of this invoice." />
+        <p class="hint">Have your CA check this wording. It is what the customer signs against.</p>
+      </div>
+    </section>
+
+    <section class="setup-section">
+      <div class="setup-section-head">
+        <span class="setup-num">5</span>
+        <div>
+          <div class="setup-section-title">Backup folder</div>
+          <p class="setup-section-desc">Optional, but strongly recommended — this is your only offsite copy.</p>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="backup">Folder</label>
+        <div class="row">
+          <input id="backup" readonly placeholder="Not set" />
+          <button id="pick-backup" type="button">Choose</button>
+        </div>
+        <p class="hint">Pick a folder inside Google Drive or OneDrive and backups sync offsite automatically.</p>
+      </div>
+    </section>
+
+    <div class="actions">
+      <button id="finish" type="button" class="primary">Save and start billing</button>
+    </div>
+  </main>
+</div>
+<script src="setup.js"></script>
+</body>
+</html>

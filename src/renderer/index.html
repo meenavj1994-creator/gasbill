@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>GasBill</title>
+<link rel="stylesheet" href="app.css" />
+<link rel="stylesheet" href="print.css" media="print" />
+</head>
+<body>
+
+<div class="app" id="app">
+  <header class="bar">
+    <div class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17h6M12 3s5 5.2 5 9a5 5 0 0 1-10 0c0-3.8 5-9 5-9Z"/></svg></div>
+    <span class="bar-name" id="bar-distributor">—</span>
+    <span class="bar-gstin" id="bar-gstin"></span>
+    <nav class="bar-nav">
+      <a href="index.html" class="bar-link active">Billing</a>
+      <a href="charges.html" class="bar-link">Charges</a>
+      <a href="consumers.html" class="bar-link">Consumers</a>
+      <a href="reports.html" class="bar-link">Reports</a>
+    </nav>
+  </header>
+
+  <div id="backup-warning" class="notice notice-warn" hidden></div>
+
+  <div id="update-banner" class="notice notice-update" hidden>
+    <span id="update-text"></span>
+    <button id="update-install" type="button" class="mini">Restart to update</button>
+  </div>
+
+  <main class="sheet"><div class="cols"><div class="col-main">
+    <div class="sheet-head">
+      <h1>New invoice</h1>
+      <span class="serial" id="next-number">—</span>
+    </div>
+
+    <div class="field">
+      <label for="consumer-no">Consumer number</label>
+      <div class="combo">
+        <input id="consumer-no" autocomplete="off" placeholder="Start typing a number or name"
+               role="combobox" aria-expanded="false" aria-controls="consumer-results" aria-autocomplete="list" />
+        <div id="consumer-results" class="combo-list" role="listbox" hidden></div>
+      </div>
+      <p class="hint" id="lookup-result"></p>
+      <div class="customer-card" id="customer-card" hidden>
+        <div class="customer-card-name" id="card-name"></div>
+        <div class="customer-card-meta" id="card-meta"></div>
+        <button id="card-edit" type="button" class="mini ghost">Edit details</button>
+      </div>
+    </div>
+
+    <div id="customer-fields" hidden>
+      <div class="pair">
+        <div class="field">
+          <label for="customer-name">Customer name</label>
+          <input id="customer-name" autocomplete="off" />
+          <p class="error" id="customer-name-error" hidden></p>
+        </div>
+        <div class="field">
+          <label for="customer-address">Address</label>
+          <input id="customer-address" autocomplete="off" />
+        </div>
+      </div>
+      <div class="field">
+        <label for="customer-gstin">Customer GSTIN <span class="optional">optional, business customers</span></label>
+        <input id="customer-gstin" autocomplete="off" maxlength="15" spellcheck="false" />
+        <p class="hint" id="gstin-result"></p>
+      </div>
+    </div>
+
+    <section class="lines">
+      <div class="lines-head">
+        <h2>Charges</h2>
+        <span class="kbd-hint">Ctrl K to jump here</span>
+      </div>
+      <div class="row">
+        <select id="charge-select" aria-label="Charge type"></select>
+        <button id="add-charge" type="button">Add</button>
+      </div>
+      <ul id="line-list" class="line-list"></ul>
+      <p class="empty" id="lines-empty">No charges added yet.</p>
+      <p class="error" id="lines-error" hidden></p>
+    </section>
+
+    </div><aside class="col-side">
+    <section class="totals">
+      <div class="total-row"><span>Taxable value</span><span id="t-taxable">0.00</span></div>
+      <div class="total-row"><span id="t-cgst-label">CGST @ 9%</span><span id="t-cgst">0.00</span></div>
+      <div class="total-row"><span id="t-sgst-label">SGST @ 9%</span><span id="t-sgst">0.00</span></div>
+      <div class="total-row"><span>Rounding</span><span id="t-rounding">0.00</span></div>
+      <div class="total-row total-row-final"><span>Total</span><span id="t-total">₹0</span></div>
+    </section>
+    <p class="words" id="t-words"></p>
+
+    <div class="actions">
+      <button id="save" type="button">Save only</button>
+      <button id="save-print" type="button" class="primary">Save and print<span class="kbd">Ctrl P</span></button>
+    </div>
+    </aside></div>
+  </main>
+</div>
+
+<div id="toast" class="toast" hidden role="status" aria-live="polite"></div>
+<div class="print-only" id="print-area"></div>
+
+<template id="invoice-template">
+  <article class="doc">
+    <div class="doc-head">
+      <div class="doc-title">Tax invoice</div>
+      <div class="doc-copy" data-copy></div>
+    </div>
+    <div class="doc-supplier">
+      <div class="doc-supplier-name" data-trade-name></div>
+      <div data-supplier-address></div>
+      <div class="doc-mono">GSTIN <span data-supplier-gstin></span></div>
+    </div>
+    <div class="doc-meta">
+      <div><span class="doc-label">Invoice no</span><span class="doc-mono" data-invoice-no></span></div>
+      <div><span class="doc-label">Date</span><span class="doc-mono" data-invoice-date></span></div>
+    </div>
+    <div class="doc-recipient">
+      <div class="doc-label">Recipient</div>
+      <div data-customer-name></div>
+      <div data-customer-address></div>
+      <div data-consumer-line></div>
+      <div data-customer-gstin-line></div>
+      <div data-place-of-supply></div>
+      <div>Reverse charge — No</div>
+    </div>
+    <table class="doc-lines">
+      <thead><tr><th class="c-desc">Description</th><th class="c-qty">Qty</th><th class="c-amt">Amount</th></tr></thead>
+      <tbody data-lines></tbody>
+    </table>
+    <div class="doc-totals" data-totals></div>
+    <div class="doc-words" data-words></div>
+    <div class="doc-thanks" data-thanks>Thank you for your business.</div>
+    <div class="doc-ack" data-ack hidden></div>
+    <div class="doc-signs">
+      <div class="doc-sign-block" data-customer-sign hidden>
+        <div class="doc-sign-rule"></div>
+        <div class="doc-sign-label">Customer signature</div>
+        <div class="doc-sign-fill">Name</div>
+        <div class="doc-sign-fill">Date</div>
+      </div>
+      <div class="doc-sign-block">
+        <div class="doc-sign-rule"></div>
+        <div class="doc-sign-label" data-sign-for></div>
+        <div class="doc-sign-sub">Authorised signatory</div>
+      </div>
+    </div>
+  </article>
+</template>
+
+<script src="app.js"></script>
+</body>
+</html>

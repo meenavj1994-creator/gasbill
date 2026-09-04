@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Reports — GasBill</title>
+<link rel="stylesheet" href="app.css" />
+</head>
+<body>
+<div class="app">
+  <header class="bar">
+    <div class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17h6M12 3s5 5.2 5 9a5 5 0 0 1-10 0c0-3.8 5-9 5-9Z"/></svg></div>
+    <span class="bar-name">Reports</span>
+    <nav class="bar-nav"><a href="index.html" class="bar-link">Billing</a><a href="charges.html" class="bar-link">Charges</a><a href="consumers.html" class="bar-link">Consumers</a><a href="reports.html" class="bar-link active">Reports</a></nav>
+  </header>
+  <main class="sheet">
+    <div class="sheet-head"><h1>Export for your CA</h1></div>
+
+    <p class="hint">One workbook with six sheets: invoice register, B2CS summary, B2B detail, charge summary, credit notes, and monthly totals.</p>
+
+    <div class="field">
+      <label for="preset">Period</label>
+      <select id="preset">
+        <option value="fy">This financial year</option>
+        <option value="month">This month</option>
+        <option value="custom">Custom dates</option>
+      </select>
+    </div>
+
+    <div id="custom-range" class="pair" hidden>
+      <div class="field">
+        <label for="from">From</label>
+        <input id="from" type="date" />
+      </div>
+      <div class="field">
+        <label for="to">To</label>
+        <input id="to" type="date" />
+      </div>
+    </div>
+
+    <p class="hint" id="range-note"></p>
+    <p class="error" id="error" hidden></p>
+
+    <div class="actions">
+      <button id="export" type="button" class="primary">Export workbook</button>
+    </div>
+  </main>
+</div>
+<script src="reports.js"></script>
+</body>
+</html>

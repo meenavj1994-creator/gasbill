@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Consumers — GasBill</title>
+<link rel="stylesheet" href="app.css" />
+</head>
+<body>
+<div class="app">
+  <header class="bar">
+    <div class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17h6M12 3s5 5.2 5 9a5 5 0 0 1-10 0c0-3.8 5-9 5-9Z"/></svg></div>
+    <span class="bar-name">Consumer base</span>
+    <nav class="bar-nav"><a href="index.html" class="bar-link">Billing</a><a href="charges.html" class="bar-link">Charges</a><a href="consumers.html" class="bar-link active">Consumers</a><a href="reports.html" class="bar-link">Reports</a></nav>
+  </header>
+  <main class="sheet">
+    <div class="sheet-head"><h1>Import consumers</h1></div>
+
+    <p class="hint">Load the consumer export from your distributor portal. Re-importing updates existing records and adds new ones; nothing is deleted.</p>
+
+    <section class="setup-section">
+      <div class="setup-section-head">
+        <span class="setup-num">1</span>
+        <div>
+          <div class="setup-section-title">Choose a file</div>
+          <p class="setup-section-desc">XLSX or CSV, exported straight from your distributor portal.</p>
+        </div>
+      </div>
+      <div class="field">
+        <label for="file">File</label>
+        <input id="file" type="file" accept=".xlsx,.xls,.csv" />
+        <p class="hint" id="file-info"></p>
+      </div>
+    </section>
+
+    <div id="mapping" class="setup-section" hidden>
+      <div class="setup-section-head">
+        <span class="setup-num">2</span>
+        <div>
+          <div class="setup-section-title">Match your columns</div>
+          <p class="setup-section-desc">Best guesses are pre-selected — check them before importing.</p>
+        </div>
+      </div>
+      <div class="field-grid">
+        <div class="field">
+          <label for="m-no">Consumer number column</label>
+          <select id="m-no"></select>
+        </div>
+        <div class="field">
+          <label for="m-name">Name column</label>
+          <select id="m-name"></select>
+        </div>
+        <div class="field">
+          <label for="m-address">Address column</label>
+          <select id="m-address"></select>
+        </div>
+        <div class="field">
+          <label for="m-mobile">Mobile column</label>
+          <select id="m-mobile"></select>
+        </div>
+      </div>
+      <p class="error" id="map-error" hidden></p>
+      <div class="actions">
+        <button id="run" type="button" class="primary">Import</button>
+      </div>
+    </div>
+
+    <section class="totals" id="result" hidden>
+      <div class="total-row"><span>New records</span><span id="r-created">0</span></div>
+      <div class="total-row"><span>Updated</span><span id="r-updated">0</span></div>
+      <div class="total-row"><span>Skipped</span><span id="r-skipped">0</span></div>
+    </section>
+  </main>
+</div>
+<script src="consumers.js"></script>
+</body>
+</html>
