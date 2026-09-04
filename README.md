@@ -35,12 +35,28 @@ unaffected by whichever build is currently on disk.
 
 ## Before shipping to a distributor
 
-1. **Set the GitHub repo** in `package.json` under `build.publish` for
-   auto-updates, or remove that block to disable them.
-2. **Confirm every seeded charge.** They are inserted with
+1. **Confirm every seeded charge.** They are inserted with
    `needs_confirmation = 1`, deliberately. The app shows a banner until they
    are confirmed against the current territory circular.
-3. **Have a CA review** the printed invoice template and the B2CS sheet.
+2. **Have a CA review** the printed invoice template and the B2CS sheet.
+
+## Auto-update
+
+`package.json`'s `build.publish` points at
+[meenavj1994-creator/gasbill](https://github.com/meenavj1994-creator/gasbill)
+on GitHub (public, so no token is needed at update-check time). The packaged
+app checks for updates once on launch — `src/main/main.js`'s
+`checkForUpdates()`, guarded by `app.isPackaged` so it's a no-op under
+`npm start`. When a newer version has finished downloading in the background,
+a banner appears on the billing screen with a "Restart to update" button.
+
+To cut a release: bump `version` in `package.json`, generate a GitHub
+personal access token with `public_repo` scope, then run
+
+    GH_TOKEN=<token> npm run dist
+
+electron-builder publishes the installer and `latest.yml` straight to a new
+GitHub Release. Already-installed copies of the app pick it up next launch.
 
 ## The two copies
 
