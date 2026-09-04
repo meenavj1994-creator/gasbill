@@ -261,6 +261,7 @@ button.blue:hover { background: var(--blue-dark); border-color: var(--blue-dark)
 }
 .line-item:hover { background: var(--blue-tint); }
 .line-desc { flex: 1; font-size: 14px; }
+.line-warn { font-size: 11px; font-weight: 600; color: var(--gold-deep); display: block; margin-top: 2px; }
 .line-qty { font-family: var(--mono); min-width: 16px; width: auto; text-align: center; font-size: 15px; font-variant-numeric: tabular-nums; }
 .line-amount { font-family: var(--mono); width: 80px; text-align: right; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .line-remove { padding: 5px 10px; font-size: 13px; color: var(--slate); min-height: 32px; }

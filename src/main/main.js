@@ -17,6 +17,7 @@ const { autoUpdater } = require('electron-updater');
 let db;
 let repo;
 let win;
+let dirty = false;
 
 function dbPath() {
   return path.join(app.getPath('userData'), 'invoices.db');
@@ -63,6 +64,21 @@ function createWindow() {
     }
   });
   win.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
+
+  win.webContents.on('did-navigate', function () { dirty = false; });
+
+  win.on('close', function (event) {
+    if (!dirty) return;
+    const choice = dialog.showMessageBoxSync(win, {
+      type: 'warning',
+      buttons: ['Close without saving', 'Cancel'],
+      defaultId: 1,
+      cancelId: 1,
+      message: 'You have an unsaved invoice.',
+      detail: 'Closing now will lose it — there is no draft recovery.'
+    });
+    if (choice === 1) event.preventDefault();
+  });
 }
 
 function checkForUpdates() {
@@ -193,3 +209,5 @@ ipcMain.handle('print:invoice', function () {
 ipcMain.handle('update:install', function () {
   autoUpdater.quitAndInstall();
 });
+
+ipcMain.on('app:dirty', function (event, isDirty) { dirty = isDirty; });

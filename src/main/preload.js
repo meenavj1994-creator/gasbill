@@ -42,5 +42,6 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.on('update:ready', function (event, version) { callback(version); });
     },
     install: call('update:install')
-  }
+  },
+  markDirty: function (isDirty) { ipcRenderer.send('app:dirty', isDirty); }
 });

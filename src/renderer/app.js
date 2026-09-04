@@ -151,7 +151,8 @@ function populateChargeSelect() {
   charges.forEach(function (charge, index) {
     const option = document.createElement('option');
     option.value = String(index);
-    option.textContent = charge.description + ' — ' + money(charge.base_amount);
+    option.textContent = charge.description + ' — ' + money(charge.base_amount) +
+      (charge.needs_confirmation ? ' · unconfirmed' : '');
     select.appendChild(option);
   });
 }
@@ -194,7 +195,10 @@ function wire() {
     $('customer-name').focus();
   });
 
-  $('customer-name').addEventListener('input', function () { $('customer-name-error').hidden = true; });
+  $('customer-name').addEventListener('input', function () {
+    $('customer-name-error').hidden = true;
+    syncDirty();
+  });
   $('customer-gstin').addEventListener('blur', validateCustomerGstin);
   $('customer-gstin').addEventListener('input', function () {
     $('gstin-result').textContent = '';
@@ -233,6 +237,7 @@ function applyConsumer(person) {
   $('customer-fields').hidden = true;
   $('lookup-result').textContent = '';
   $('charge-select').focus();
+  syncDirty();
 }
 
 function showManualEntry(no) {
@@ -268,7 +273,8 @@ function addLine(charge) {
     description: charge.description,
     qty: 1,
     rate: charge.base_amount,
-    gstRate: charge.gst_rate
+    gstRate: charge.gst_rate,
+    needsConfirmation: !!charge.needs_confirmation
   });
 
   $('lines-error').hidden = true;
@@ -287,6 +293,12 @@ function render() {
     const desc = document.createElement('div');
     desc.className = 'line-desc';
     desc.textContent = line.description;
+    if (line.needsConfirmation) {
+      const warn = document.createElement('span');
+      warn.className = 'line-warn';
+      warn.textContent = 'Rate not yet confirmed';
+      desc.appendChild(warn);
+    }
 
     const minus = document.createElement('button');
     minus.type = 'button';
@@ -322,6 +334,11 @@ function render() {
   });
 
   recalc();
+  syncDirty();
+}
+
+function syncDirty() {
+  window.api.markDirty(!!($('customer-name').value.trim() || lines.length));
 }
 
 let animFrame = null;

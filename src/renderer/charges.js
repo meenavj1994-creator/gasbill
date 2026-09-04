@@ -11,6 +11,10 @@ async function unwrap(p) {
 
 async function render() {
   const active = await unwrap(window.api.charges.active());
+  active.sort(function (a, b) {
+    if (a.needs_confirmation !== b.needs_confirmation) return b.needs_confirmation - a.needs_confirmation;
+    return a.description.localeCompare(b.description);
+  });
   const list = $('charge-list');
   list.innerHTML = '';
 
