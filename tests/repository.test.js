@@ -30,7 +30,7 @@ function freshRepo() {
     phone: '0734-2510000',
     logo_path: null,
     certificate_path: null,
-    series_prefix: 'BG',
+    series_prefix: 'SH',
     backup_folder: null,
     setup_complete: 1
   });
@@ -73,8 +73,17 @@ test('numbers run consecutively with no gaps', function () {
     numbers.push(repo.saveInvoice(customer({ invoice_date: '2026-09-03' })).invoice_no);
   }
   assert.deepStrictEqual(numbers, [
-    'BG/2627/00001', 'BG/2627/00002', 'BG/2627/00003', 'BG/2627/00004', 'BG/2627/00005'
+    'SH/2627/09/0001', 'SH/2627/09/0002', 'SH/2627/09/0003', 'SH/2627/09/0004', 'SH/2627/09/0005'
   ]);
+});
+
+test('counter restarts in a new month', function () {
+  const { repo } = freshRepo();
+  repo.saveInvoice(customer({ invoice_date: '2026-09-28' }));
+  const lastOfMonth = repo.saveInvoice(customer({ invoice_date: '2026-09-30' }));
+  const firstOfNext = repo.saveInvoice(customer({ invoice_date: '2026-10-01' }));
+  assert.strictEqual(lastOfMonth.invoice_no, 'SH/2627/09/0002');
+  assert.strictEqual(firstOfNext.invoice_no, 'SH/2627/10/0001');
 });
 
 test('counter restarts in a new financial year', function () {
@@ -82,8 +91,8 @@ test('counter restarts in a new financial year', function () {
   repo.saveInvoice(customer({ invoice_date: '2026-03-30' }));
   const lastOfOldFy = repo.saveInvoice(customer({ invoice_date: '2026-03-31' }));
   const firstOfNewFy = repo.saveInvoice(customer({ invoice_date: '2026-04-01' }));
-  assert.strictEqual(lastOfOldFy.invoice_no, 'BG/2526/00002');
-  assert.strictEqual(firstOfNewFy.invoice_no, 'BG/2627/00001');
+  assert.strictEqual(lastOfOldFy.invoice_no, 'SH/2526/03/0002');
+  assert.strictEqual(firstOfNewFy.invoice_no, 'SH/2627/04/0001');
 });
 
 test('a failed save does not consume a number', function () {
@@ -93,7 +102,7 @@ test('a failed save does not consume a number', function () {
     repo.saveInvoice(customer({ invoice_date: '2026-09-03', customer_name: null }));
   } catch (e) { /* expected */ }
   const next = repo.saveInvoice(customer({ invoice_date: '2026-09-03' }));
-  assert.strictEqual(next.invoice_no, 'BG/2627/00002');
+  assert.strictEqual(next.invoice_no, 'SH/2627/09/0002');
 });
 
 test('invoice_no is unique at the database level', function () {

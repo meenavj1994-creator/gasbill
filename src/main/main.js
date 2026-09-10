@@ -210,6 +210,13 @@ function handle(channel, fn) {
 handle('distributor:get', function () { return repo.getDistributor(); });
 handle('distributor:save', function (d) { return repo.saveDistributor(d); });
 
+handle('app:version', function () { return app.getVersion(); });
+
+handle('gst:seriesPrefix', function (tradeName) { return gst.seriesPrefix(tradeName); });
+handle('gst:sampleInvoiceNo', function (prefix, iso) {
+  return gst.buildInvoiceNumber(prefix, iso ? new Date(iso) : new Date(), 1);
+});
+
 handle('branding:defaultLogo', function () {
   const p = path.join(__dirname, '..', '..', 'resources', 'branding', 'bharatgas-logo.png');
   return fs.existsSync(p) ? p : null;

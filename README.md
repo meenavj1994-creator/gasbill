@@ -124,6 +124,10 @@ draft recovery. Whatever was on screen is gone on next launch.
 - `charges.html` — charges master. Add, confirm, and revise rates.
 - `consumers.html` — XLSX/CSV import with column mapping and guessed defaults.
 - `reports.html` — workbook export by financial year, month, or custom dates.
+- `settings.html` — edit the business details, logo, series prefix,
+  acknowledgement wording and backup folder after first run. `saveDistributor`
+  writes every column, so this screen round-trips the fields it does not edit
+  rather than letting them fall to null.
 
 ## Modules
 
@@ -181,8 +185,20 @@ Arctic Frost chrome with Botanical Garden signal colours:
 Structure follows an 8px spacing scale with a matching radius and shadow scale,
 pill-shaped buttons, a 44px minimum height on every control, and 150–300ms
 transitions on a single easing curve. Motion is disabled under
-`prefers-reduced-motion`. Glassmorphism was deliberately left out — translucent
-blurred panels reduce legibility on the low-end monitors these run on.
+`prefers-reduced-motion`.
+
+Surfaces are frosted glass over a fixed blue-and-gold wash. The earlier note
+here said glassmorphism was left out because translucency hurts legibility on
+low-end monitors; that concern is handled rather than ignored — blur is spent
+on chrome (header, sheet, sections, dropdowns) while anything holding figures
+sits on `--glass-solid`, which is opaque enough to keep text crisp.
+
+**Entrance animations must never animate opacity.** Chromium freezes CSS
+animations while it believes the window is occluded, and a running animation
+applies its current frame whatever its fill-mode — so an `opacity: 0` start
+frame does not resolve, it sticks, and the whole app renders blank. This
+actually happened here. Structural chrome animates `transform` only, so a
+frozen animation costs a few pixels of offset instead of the entire UI.
 
 The billing screen is a two-column layout on windows over 900px — charges left,
 totals and actions in a sticky right rail — collapsing to one column below that.
@@ -195,8 +211,25 @@ system fonts and renders every page blank white — no error, no warning, just a
 empty image that OCR reads as zero characters. `tests/extract.test.js` guards
 against this by asserting the rendered PNG is over 100 KB.
 
+## Invoice numbering
+
+    SH/2627/09/0001
+    │  │    │  └── counter, restarts at 0001 every month
+    │  │    └───── calendar month
+    │  └────────── financial year (2026-27)
+    └───────────── series prefix, first two letters of the trade name
+
+Fifteen characters, inside the sixteen Rule 46(b) allows, with room for a
+three-letter prefix. The counter is owned by financial year *and* month
+(`invoice_counters.period_key`, e.g. `2627-09`), so it restarts monthly —
+legal as a multiple series, but it does mean a number is only unique when
+read together with its month.
+
+The prefix follows the trade name until someone types their own, after which
+it stays put. `gst.js` owns both the format and the length check; the setup
+and settings screens ask the main process for a sample rather than rebuilding
+the string themselves, so the sixteen-character rule lives in one place.
+
 ## Still to build
 
-Credit notes UI (the table and report sheet exist, the screen does not),
-electron-updater wiring, and a settings screen for the backup folder and page
-size after first run.
+Credit notes UI — the table and report sheet exist, the screen does not.

@@ -20,7 +20,6 @@
     "better-sqlite3": "^11.10.0",
     "electron-updater": "^6.3.9",
     "pdfjs-dist": "^4.8.69",
-    "puppeteer": "^25.10.0",
     "tesseract.js": "^5.1.1",
     "xlsx": "^0.18.5"
   },

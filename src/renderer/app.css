@@ -41,7 +41,18 @@
   --shadow-md: 0 4px 14px rgba(5,54,82,0.09);
   --shadow-lg: 0 8px 24px rgba(5,54,82,0.09), 0 16px 32px rgba(5,54,82,0.07);
 
+  /* Glass. Panels that only hold chrome can be properly translucent; anything
+     carrying dense figures sits on --glass-solid so the text stays crisp on
+     the low-end monitors these run on. */
+  --glass: rgba(255,255,255,0.48);
+  --glass-solid: rgba(255,255,255,0.74);
+  --glass-edge: rgba(255,255,255,0.72);
+  --glass-line: rgba(5,54,82,0.10);
+  --blur: blur(20px) saturate(140%);
+  --blur-soft: blur(12px) saturate(130%);
+
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --fast: 150ms;
   --base: 300ms;
 }
@@ -55,20 +66,42 @@
 
 body {
   margin: 0;
+  min-height: 100vh;
   background: var(--page);
   color: var(--ink);
   font: 15px/1.5 var(--font);
 }
 
+/* Blur needs something behind it. These two washes sit under everything and
+   never scroll, so the glass has colour to pick up. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(40rem 26rem at 8% -6%, rgba(0,123,201,0.40), transparent 60%),
+    radial-gradient(34rem 24rem at 98% 2%, rgba(255,224,0,0.42), transparent 58%),
+    radial-gradient(30rem 22rem at 52% 46%, rgba(255,224,0,0.16), transparent 62%),
+    radial-gradient(44rem 32rem at 78% 106%, rgba(0,123,201,0.32), transparent 62%),
+    radial-gradient(30rem 28rem at 2% 88%, rgba(0,123,201,0.22), transparent 60%);
+}
+
 /* ---------- Header ---------- */
 .bar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
   display: flex;
   align-items: center;
   gap: 14px;
   padding: 13px 22px;
-  background: linear-gradient(100deg, var(--blue), var(--blue-dark));
+  background: linear-gradient(100deg, rgba(0,123,201,0.92), rgba(0,86,143,0.92));
+  -webkit-backdrop-filter: var(--blur);
+  backdrop-filter: var(--blur);
   color: #fff;
-  box-shadow: inset 0 -3px 0 var(--gold);
+  box-shadow: inset 0 -3px 0 var(--gold), 0 6px 22px rgba(5,54,82,0.14);
 }
 .brand-mark {
   position: relative;
@@ -134,11 +167,14 @@ body {
 .sheet {
   max-width: 1040px;
   margin: 22px auto 60px;
-  background: var(--paper);
-  border: 1px solid var(--rule);
+  background: var(--glass-solid);
+  -webkit-backdrop-filter: var(--blur);
+  backdrop-filter: var(--blur);
+  border: 1px solid var(--glass-edge);
   border-radius: var(--radius-lg);
   padding: var(--space-6) var(--space-8) var(--space-8);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255,255,255,0.9);
+  animation: sheet-in 460ms var(--ease-out);
 }
 
 .sheet-head {
@@ -169,13 +205,15 @@ input, select {
   width: 100%;
   min-height: 44px;
   padding: 10px 14px;
-  transition: border-color var(--fast) var(--ease), box-shadow var(--fast) var(--ease);
+  transition: border-color var(--fast) var(--ease), box-shadow var(--fast) var(--ease),
+              background var(--fast) var(--ease);
   font: inherit;
   color: var(--ink);
-  background: var(--paper);
+  background: rgba(255,255,255,0.78);
   border: 1px solid var(--rule);
   border-radius: var(--radius-sm);
 }
+input:focus, select:focus { background: #fff; }
 select {
   appearance: none;
   -webkit-appearance: none;
@@ -216,8 +254,8 @@ button {
   transition: background var(--fast) var(--ease), border-color var(--fast) var(--ease),
               transform var(--fast) var(--ease), box-shadow var(--base) var(--ease);
 }
-button:hover { background: var(--page); border-color: var(--slate-light); }
-button:active { transform: scale(0.98); }
+button:hover { background: #fff; border-color: var(--blue-edge); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+button:active { transform: scale(0.98) translateY(0); }
 button.primary { background: var(--green); color: #fff; border-color: var(--green); }
 button.primary:hover {
   background: #257F49;
@@ -233,16 +271,31 @@ button.blue:hover { background: var(--blue-dark); border-color: var(--blue-dark)
 .error { margin: 6px 0 0; font-size: 13px; color: var(--danger); font-weight: 500; }
 
 .customer-card {
-  background: var(--blue-tint);
-  border: 1px solid var(--blue-edge);
+  background: linear-gradient(140deg, rgba(220,238,251,0.85), rgba(255,255,255,0.55));
+  -webkit-backdrop-filter: var(--blur-soft);
+  backdrop-filter: var(--blur-soft);
+  border: 1px solid rgba(175,219,247,0.8);
   border-radius: var(--radius-md);
   padding: var(--space-3) var(--space-4);
   margin-top: var(--space-2);
-  animation: rise var(--base) var(--ease);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.8);
+  animation: rise var(--base) var(--ease-out);
 }
 @keyframes rise {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
+}
+/* Structural chrome animates transform only, never opacity. A running
+   animation applies its current frame whatever the fill-mode, so if Chromium
+   freezes it at 0% (occluded window) an opacity-0 start frame would leave the
+   app blank. Frozen at a small offset is merely a few pixels out of place. */
+@keyframes sheet-in {
+  from { transform: translateY(10px); }
+  to { transform: translateY(0); }
+}
+@keyframes sheen {
+  from { transform: translateX(-8%); opacity: 0.75; }
+  to { transform: translateX(12%); opacity: 1; }
 }
 .customer-card-name { font-size: 17px; font-weight: 700; color: var(--blue-deep); }
 .customer-card-meta { font-size: 12px; color: var(--blue-dark); opacity: 0.85; margin-top: 3px; }
@@ -257,13 +310,16 @@ button.blue:hover { background: var(--blue-dark); border-color: var(--blue-dark)
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  animation: rise var(--fast) var(--ease);
+  animation: rise var(--fast) var(--ease-out);
   padding: 12px 14px;
-  background: var(--page);
-  border-radius: var(--radius-sm);
+  background: rgba(255,255,255,0.55);
+  border: 1px solid rgba(255,255,255,0.65);
+  border-radius: var(--radius-md);
   margin-bottom: 6px;
-  transition: background 140ms ease;
+  transition: background var(--fast) var(--ease), transform var(--fast) var(--ease),
+              box-shadow var(--fast) var(--ease);
 }
+.line-item:hover { transform: translateX(2px); box-shadow: var(--shadow-sm); }
 .line-item:hover { background: var(--blue-tint); }
 .line-desc { flex: 1; font-size: 14px; }
 .line-warn { font-size: 11px; font-weight: 600; color: var(--gold-deep); display: block; margin-top: 2px; }
@@ -274,12 +330,26 @@ button.blue:hover { background: var(--blue-dark); border-color: var(--blue-dark)
 .empty { color: var(--slate-light); font-size: 14px; padding: 10px 0; }
 
 .totals {
+  position: relative;
   margin-top: var(--space-6);
   padding: var(--space-4) var(--space-6);
-  background: linear-gradient(155deg, var(--blue), var(--blue-dark));
+  background: linear-gradient(155deg, rgba(0,123,201,0.93), rgba(0,86,143,0.95));
+  -webkit-backdrop-filter: var(--blur-soft);
+  backdrop-filter: var(--blur-soft);
   color: #fff;
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
+  border: 1px solid rgba(255,255,255,0.18);
+  box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255,255,255,0.25);
+  overflow: hidden;
+}
+/* A slow gold sheen so the panel holding the total feels alive. */
+.totals::after {
+  content: '';
+  position: absolute;
+  inset: -40% -10%;
+  background: radial-gradient(18rem 8rem at 20% 0%, rgba(255,224,0,0.22), transparent 70%);
+  pointer-events: none;
+  animation: sheen 9s var(--ease) infinite alternate;
 }
 .total-row { display: flex; justify-content: space-between; padding: 3px 0; font-size: 13px; opacity: 0.88; }
 .total-row span:last-child { font-family: var(--mono); font-variant-numeric: tabular-nums; }
@@ -302,11 +372,18 @@ button.blue:hover { background: var(--blue-dark); border-color: var(--blue-dark)
 .charge-list { list-style: none; margin: 0; padding: 0; }
 .charge-item {
   padding: 15px 16px;
-  background: var(--page);
-  border-radius: 9px;
-  margin-bottom: 9px;
+  background: var(--glass);
+  -webkit-backdrop-filter: var(--blur-soft);
+  backdrop-filter: var(--blur-soft);
+  border: 1px solid var(--glass-edge);
   border-left: 4px solid var(--green);
+  border-radius: var(--radius-md);
+  margin-bottom: 9px;
+  box-shadow: var(--shadow-sm);
+  animation: rise var(--base) var(--ease-out);
+  transition: transform var(--fast) var(--ease), box-shadow var(--fast) var(--ease);
 }
+.charge-item:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
 .charge-item.pending { border-left-color: var(--gold-deep); background: var(--gold-tint); }
 .charge-head { display: flex; justify-content: space-between; gap: 12px; font-size: 15px; font-weight: 500; }
 .charge-amount { font-family: var(--mono); font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -332,13 +409,15 @@ button.blue:hover { background: var(--blue-dark); border-color: var(--blue-dark)
 
 .combo { position: relative; }
 .combo-list {
-  animation: rise var(--fast) var(--ease);
+  animation: rise var(--fast) var(--ease-out);
   position: absolute;
   top: calc(100% + 4px);
   left: 0;
   right: 0;
-  background: var(--paper);
-  border: 1px solid var(--rule);
+  background: var(--glass-solid);
+  -webkit-backdrop-filter: var(--blur);
+  backdrop-filter: var(--blur);
+  border: 1px solid var(--glass-edge);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);
   overflow: hidden;
@@ -392,13 +471,16 @@ button.blue:hover { background: var(--blue-dark); border-color: var(--blue-dark)
   bottom: 26px;
   transform: translate(-50%, 14px);
   opacity: 0;
-  background: var(--ink);
+  background: rgba(20,36,51,0.90);
+  -webkit-backdrop-filter: var(--blur);
+  backdrop-filter: var(--blur);
+  border: 1px solid rgba(255,255,255,0.14);
   color: #fff;
   padding: 12px 20px;
   font-size: 14px;
   font-weight: 500;
   box-shadow: var(--shadow-lg);
-  transition: opacity var(--base) var(--ease), transform var(--base) var(--ease);
+  transition: opacity var(--base) var(--ease-out), transform var(--base) var(--ease-out);
   z-index: 60;
 }
 .toast-in { opacity: 1; transform: translate(-50%, 0); }
@@ -443,11 +525,19 @@ button:disabled { opacity: 0.55; cursor: default; }
 
 /* ---------- Setup flow ---------- */
 .setup-section {
-  border: 1px solid var(--rule);
+  border: 1px solid var(--glass-edge);
   border-radius: var(--radius-lg);
   padding: var(--space-4) var(--space-6) var(--space-6);
   margin-bottom: var(--space-4);
-  background: var(--paper);
+  background: var(--glass);
+  -webkit-backdrop-filter: var(--blur-soft);
+  backdrop-filter: var(--blur-soft);
+  box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255,255,255,0.7);
+  transition: box-shadow var(--base) var(--ease), border-color var(--base) var(--ease);
+}
+.setup-section:focus-within {
+  border-color: var(--blue-edge);
+  box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255,255,255,0.9);
 }
 .setup-section-head {
   display: flex;
@@ -488,6 +578,13 @@ button:disabled { opacity: 0.55; cursor: default; }
   background: var(--paper);
 }
 
+/* Entrance animations deliberately carry no fill-mode and no delay. Chromium
+   freezes CSS animations while it thinks the window is occluded, and anything
+   relying on `both` or `backwards` would then hold its opacity-0 start frame
+   indefinitely — a blank app. With no fill-mode the resting style is the
+   visible one, so a frozen animation degrades to "already there". */
+.setup-section { animation: sheet-in 460ms var(--ease-out); }
+
 .field-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -501,6 +598,11 @@ button:disabled { opacity: 0.55; cursor: default; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    /* Without this an endless animation just loops frantically instead of
+       settling, which is worse than the motion it replaces. */
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+  .sheet, .setup-section, .bar { animation: none !important; }
 }

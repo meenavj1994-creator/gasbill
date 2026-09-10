@@ -116,9 +116,10 @@ function createRepository(db) {
 
   function nextInvoicePreview(date) {
     const d = getDistributor();
-    const fy = gst.financialYear(date || new Date());
-    const row = db.prepare('SELECT next_value FROM invoice_counters WHERE fy_label = ?').get(fy.label);
-    return gst.buildInvoiceNumber(d.series_prefix, date || new Date(), row ? row.next_value : 1);
+    const when = date || new Date();
+    const row = db.prepare('SELECT next_value FROM invoice_counters WHERE period_key = ?')
+      .get(gst.periodKey(when));
+    return gst.buildInvoiceNumber(d.series_prefix, when, row ? row.next_value : 1);
   }
 
   const saveInvoice = db.transaction(function (payload) {
@@ -127,12 +128,13 @@ function createRepository(db) {
 
     const date = payload.invoice_date ? new Date(payload.invoice_date) : new Date();
     const fy = gst.financialYear(date);
+    const period = gst.periodKey(date);
 
-    db.prepare('INSERT INTO invoice_counters (fy_label, next_value) VALUES (?, 1) ON CONFLICT(fy_label) DO NOTHING')
-      .run(fy.label);
-    const counter = db.prepare('SELECT next_value FROM invoice_counters WHERE fy_label = ?').get(fy.label).next_value;
+    db.prepare('INSERT INTO invoice_counters (period_key, next_value) VALUES (?, 1) ON CONFLICT(period_key) DO NOTHING')
+      .run(period);
+    const counter = db.prepare('SELECT next_value FROM invoice_counters WHERE period_key = ?').get(period).next_value;
     const invoiceNo = gst.buildInvoiceNumber(d.series_prefix, date, counter);
-    db.prepare('UPDATE invoice_counters SET next_value = next_value + 1 WHERE fy_label = ?').run(fy.label);
+    db.prepare('UPDATE invoice_counters SET next_value = next_value + 1 WHERE period_key = ?').run(period);
 
     const posCode = payload.place_of_supply_code || d.state_code;
     const computed = gst.computeInvoice(payload.lines, d.state_code, posCode);

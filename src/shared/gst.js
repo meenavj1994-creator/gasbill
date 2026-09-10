@@ -49,9 +49,23 @@ function financialYear(date) {
   };
 }
 
+/* Counters restart every month, so the key that owns a counter is the
+   financial year plus the calendar month — not the year alone. */
+function periodKey(date) {
+  const d = date instanceof Date ? date : new Date(date);
+  return financialYear(d).label + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+
+function seriesPrefix(tradeName) {
+  const letters = String(tradeName || '').toUpperCase().replace(/[^A-Z]/g, '');
+  return letters.slice(0, 2) || 'GB';
+}
+
 function buildInvoiceNumber(prefix, date, counter) {
-  const fy = financialYear(date);
-  const number = prefix + '/' + fy.label + '/' + String(counter).padStart(5, '0');
+  const d = date instanceof Date ? date : new Date(date);
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const number = prefix + '/' + financialYear(d).label + '/' + month + '/' +
+    String(counter).padStart(4, '0');
   if (number.length > 16) {
     throw new Error('Invoice number "' + number + '" exceeds the 16 character limit under Rule 46(b). Shorten the series prefix.');
   }
@@ -140,6 +154,8 @@ module.exports = {
   gstinCheckDigit,
   financialYear,
   buildInvoiceNumber,
+  periodKey,
+  seriesPrefix,
   computeInvoice,
   amountInWords,
   round2

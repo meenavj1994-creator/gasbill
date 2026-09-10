@@ -46,7 +46,10 @@ $('cert-file').addEventListener('change', async function (e) {
       return;
     }
     if (parsed.fields.gstin) $('gstin').value = parsed.fields.gstin;
-    if (parsed.fields.trade_name) $('trade-name').value = parsed.fields.trade_name;
+    if (parsed.fields.trade_name) {
+      $('trade-name').value = parsed.fields.trade_name;
+      $('trade-name').dispatchEvent(new Event('input'));
+    }
     if (parsed.fields.legal_name) $('legal-name').value = parsed.fields.legal_name;
     if (parsed.fields.address) $('address').value = parsed.fields.address;
 
@@ -84,24 +87,41 @@ $('gstin').addEventListener('input', function () {
   $('gstin-result').className = 'hint';
 });
 
-function previewNumber() {
-  const prefix = $('prefix').value.trim().toUpperCase() || 'BG';
-  const year = new Date();
-  const startYear = year.getMonth() >= 3 ? year.getFullYear() : year.getFullYear() - 1;
-  const label = String(startYear % 100).padStart(2, '0') + String((startYear + 1) % 100).padStart(2, '0');
-  const sample = prefix + '/' + label + '/00001';
+async function previewNumber() {
+  const prefix = $('prefix').value.trim().toUpperCase();
+  if (!prefix) {
+    $('prefix-preview').textContent = '';
+    $('prefix-error').hidden = true;
+    return false;
+  }
 
-  $('prefix-preview').textContent = 'Invoices will be numbered ' + sample;
-  if (sample.length > 16) {
-    $('prefix-error').textContent = 'That prefix makes the number ' + sample.length + ' characters. The limit is 16.';
+  const result = await window.api.gst.sampleInvoiceNo(prefix, new Date().toISOString());
+  if (!result.ok) {
+    $('prefix-preview').textContent = '';
+    $('prefix-error').textContent = result.error;
     $('prefix-error').hidden = false;
     return false;
   }
+
+  $('prefix-preview').textContent = 'Invoices will be numbered ' + result.data +
+    ', restarting at 0001 each month.';
   $('prefix-error').hidden = true;
   return true;
 }
 
-$('prefix').addEventListener('input', previewNumber);
+/* The prefix follows the trade name until the user types their own. */
+let prefixTouched = false;
+$('prefix').addEventListener('input', function () {
+  prefixTouched = true;
+  previewNumber();
+});
+
+$('trade-name').addEventListener('input', async function () {
+  if (prefixTouched) return;
+  $('prefix').value = await unwrap(window.api.gst.seriesPrefix($('trade-name').value));
+  previewNumber();
+});
+
 previewNumber();
 
 $('pick-backup').addEventListener('click', async function () {
@@ -129,7 +149,7 @@ $('finish').addEventListener('click', async function () {
     $('address-error').hidden = false;
     valid = false;
   }
-  if (!previewNumber()) valid = false;
+  if (!(await previewNumber())) valid = false;
   if (!(await checkGstin())) valid = false;
   if (!valid) return;
 
@@ -142,7 +162,8 @@ $('finish').addEventListener('click', async function () {
     phone: $('phone').value.trim() || null,
     logo_path: logoPath,
     certificate_path: $('cert-file').files[0] ? $('cert-file').files[0].path : null,
-    series_prefix: $('prefix').value.trim().toUpperCase() || 'BG',
+    series_prefix: $('prefix').value.trim().toUpperCase() ||
+      await unwrap(window.api.gst.seriesPrefix($('trade-name').value)),
     ack_text: $('ack').value.trim() || null,
     backup_folder: backupFolder,
     setup_complete: 1

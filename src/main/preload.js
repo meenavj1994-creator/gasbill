@@ -11,7 +11,12 @@ function call(channel) {
 
 contextBridge.exposeInMainWorld('api', {
   distributor: { get: call('distributor:get'), save: call('distributor:save') },
+  appVersion: call('app:version'),
   branding: { defaultLogo: call('branding:defaultLogo') },
+  gst: {
+    seriesPrefix: call('gst:seriesPrefix'),
+    sampleInvoiceNo: call('gst:sampleInvoiceNo')
+  },
   charges: {
     active: call('charges:active'),
     all: call('charges:all'),

@@ -129,6 +129,15 @@ const migrations = [
       db.exec(`ALTER TABLE invoice_lines DROP COLUMN sac_code`);
     }
   }
+  ,{
+    version: 4,
+    name: 'monthly invoice counters',
+    up: function (db) {
+      // The counter is now owned by a financial year *and* month ("2627-09"),
+      // so the column no longer holds what its old name claimed.
+      db.exec(`ALTER TABLE invoice_counters RENAME COLUMN fy_label TO period_key`);
+    }
+  }
 ];
 
 function migrate(db) {

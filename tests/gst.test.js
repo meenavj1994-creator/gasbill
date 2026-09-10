@@ -67,16 +67,31 @@ test('1 April 2026 rolls into FY 2026-27', function () {
 
 console.log('\nInvoice numbering');
 
-test('builds a padded number within the 16 character limit', function () {
-  const n = g.buildInvoiceNumber('BG', new Date(2026, 8, 3), 147);
-  assert.strictEqual(n, 'BG/2627/00147');
+test('builds a padded number carrying the financial year and month', function () {
+  const n = g.buildInvoiceNumber('SH', new Date(2026, 8, 3), 147);
+  assert.strictEqual(n, 'SH/2627/09/0147');
   assert.ok(n.length <= 16);
+});
+
+test('a three letter prefix still fits inside the limit', function () {
+  assert.ok(g.buildInvoiceNumber('SHR', new Date(2026, 8, 3), 1).length <= 16);
 });
 
 test('throws when the prefix pushes past 16 characters', function () {
   assert.throws(function () {
     g.buildInvoiceNumber('BALAJIGAS', new Date(2026, 8, 3), 147);
   }, /16 character limit/);
+});
+
+test('the period key pairs the financial year with the calendar month', function () {
+  assert.strictEqual(g.periodKey(new Date(2026, 8, 3)), '2627-09');
+  assert.strictEqual(g.periodKey(new Date(2026, 2, 31)), '2526-03');
+});
+
+test('the series prefix comes from the first two letters of the trade name', function () {
+  assert.strictEqual(g.seriesPrefix('Shree Balaji Gas Agency'), 'SH');
+  assert.strictEqual(g.seriesPrefix('  om gas'), 'OM');
+  assert.strictEqual(g.seriesPrefix('123'), 'GB');
 });
 
 console.log('\nTax computation');
