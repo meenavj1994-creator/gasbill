@@ -48,6 +48,11 @@
 
 * { box-sizing: border-box; }
 
+/* Class rules like `.notice { display: flex }` are author styles and beat the
+   browser's own [hidden] rule, so anything toggled with el.hidden stays on
+   screen. This puts the attribute back in charge. */
+[hidden] { display: none !important; }
+
 body {
   margin: 0;
   background: var(--page);
