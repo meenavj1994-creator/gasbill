@@ -14,8 +14,8 @@
   </header>
   <main class="sheet">
     <div class="sheet-head">
-      <h1>Charges</h1>
-      <button id="show-new" type="button">New charge</button>
+      <h1>Charges and products</h1>
+      <button id="show-new" type="button">New item</button>
     </div>
 
     <div id="new-form" class="setup-section" hidden>
@@ -25,26 +25,68 @@
       </div>
       <div class="field-grid">
         <div class="field">
+          <label for="n-kind">Type</label>
+          <select id="n-kind">
+            <option value="service">Service charge</option>
+            <option value="product">Product — hose, hot plate, and the like</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="n-from">Effective from</label>
+          <input id="n-from" type="date" />
+        </div>
+      </div>
+      <div class="field-grid">
+        <div class="field">
           <label for="n-amount">Amount before tax</label>
           <input id="n-amount" type="number" min="0" step="0.01" />
         </div>
         <div class="field">
           <label for="n-rate">GST rate (%)</label>
-          <input id="n-rate" type="number" min="0" step="0.5" value="18" />
+          <input id="n-rate" type="number" min="0" max="100" step="0.5" value="18" />
         </div>
-      </div>
-      <div class="field">
-        <label for="n-from">Effective from</label>
-        <input id="n-from" type="date" />
       </div>
       <p class="error" id="new-error" hidden></p>
       <div class="actions">
         <button id="cancel-new" type="button">Cancel</button>
-        <button id="save-new" type="button" class="primary">Add charge</button>
+        <button id="save-new" type="button" class="primary">Add item</button>
       </div>
     </div>
 
+    <h2 class="group-head" id="services-head">Service charges</h2>
     <ul class="charge-list" id="charge-list"></ul>
+
+    <h2 class="group-head" id="products-head">Products</h2>
+    <ul class="charge-list" id="product-list"></ul>
+    <p class="empty" id="products-empty">No products yet. Add a hose or a hot plate with New item.</p>
+
+    <div class="sheet-head" style="margin-top:34px">
+      <h1>Sets</h1>
+      <button id="show-set" type="button">New set</button>
+    </div>
+
+    <p class="hint">A set is a group of items you bill together — everything that goes out with
+      a new connection, say. Picking the set on the billing screen adds all of them at once.</p>
+
+    <div id="set-form" class="setup-section" hidden>
+      <div class="field">
+        <label for="s-name">Set name</label>
+        <input id="s-name" placeholder="New connection" />
+      </div>
+      <div class="field">
+        <label>Items in this set</label>
+        <div id="s-items"></div>
+        <p class="hint">Tick what belongs in the set and set how many of each.</p>
+      </div>
+      <p class="error" id="set-error" hidden></p>
+      <div class="actions">
+        <button id="cancel-set" type="button">Cancel</button>
+        <button id="save-set" type="button" class="primary">Save set</button>
+      </div>
+    </div>
+
+    <ul class="charge-list" id="set-list"></ul>
+    <p class="empty" id="sets-empty">No sets yet.</p>
   </main>
 </div>
 <script src="charges.js"></script>

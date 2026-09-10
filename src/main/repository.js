@@ -44,9 +44,9 @@ function createRepository(db) {
 
   function addCharge(c) {
     const info = db.prepare(`INSERT INTO charges (description, base_amount, gst_rate,
-      effective_from, is_active, needs_confirmation)
-      VALUES (@description, @base_amount, @gst_rate, @effective_from, 1, @needs_confirmation)`)
-      .run(Object.assign({ needs_confirmation: 0 }, c));
+      effective_from, is_active, needs_confirmation, kind)
+      VALUES (@description, @base_amount, @gst_rate, @effective_from, 1, @needs_confirmation, @kind)`)
+      .run(Object.assign({ needs_confirmation: 0, kind: 'service' }, c));
     return db.prepare('SELECT * FROM charges WHERE id = ?').get(info.lastInsertRowid);
   }
 
@@ -58,13 +58,14 @@ function createRepository(db) {
       .run(next.effective_from, id);
 
     const info = db.prepare(`INSERT INTO charges (description, base_amount, gst_rate,
-      effective_from, is_active, needs_confirmation, replaces_id)
-      VALUES (?, ?, ?, ?, 1, 0, ?)`)
+      effective_from, is_active, needs_confirmation, replaces_id, kind)
+      VALUES (?, ?, ?, ?, 1, 0, ?, ?)`)
       .run(next.description || old.description,
            next.base_amount,
            next.gst_rate == null ? old.gst_rate : next.gst_rate,
            next.effective_from,
-           id);
+           id,
+           next.kind || old.kind || 'service');
 
     return db.prepare('SELECT * FROM charges WHERE id = ?').get(info.lastInsertRowid);
   });
@@ -183,6 +184,56 @@ function createRepository(db) {
     return inv;
   }
 
+  function listBundles() {
+    const rows = db.prepare('SELECT * FROM bundles WHERE is_active = 1 ORDER BY name').all();
+    for (const b of rows) {
+      b.items = db.prepare('SELECT description, qty FROM bundle_items WHERE bundle_id = ? ORDER BY id')
+        .all(b.id);
+    }
+    return rows;
+  }
+
+  const saveBundle = db.transaction(function (bundle) {
+    let id = bundle.id;
+    if (id) {
+      db.prepare('UPDATE bundles SET name = ? WHERE id = ?').run(bundle.name, id);
+      db.prepare('DELETE FROM bundle_items WHERE bundle_id = ?').run(id);
+    } else {
+      id = db.prepare('INSERT INTO bundles (name, is_active, created_at) VALUES (?, 1, ?)')
+        .run(bundle.name, new Date().toISOString()).lastInsertRowid;
+    }
+
+    const stmt = db.prepare('INSERT INTO bundle_items (bundle_id, description, qty) VALUES (?, ?, ?)');
+    for (const item of bundle.items || []) {
+      stmt.run(id, item.description, Number(item.qty) || 1);
+    }
+    return db.prepare('SELECT * FROM bundles WHERE id = ?').get(id);
+  });
+
+  function deleteBundle(id) {
+    db.prepare('DELETE FROM bundle_items WHERE bundle_id = ?').run(id);
+    db.prepare('DELETE FROM bundles WHERE id = ?').run(id);
+    return { deleted: id };
+  }
+
+  /* Items are stored by description because a charge gets a brand new row and
+     id every time its rate is revised, so an id would go stale immediately.
+     Anything that no longer matches an active charge is handed back as
+     `missing` rather than dropped on the floor. */
+  function resolveBundle(id) {
+    const items = db.prepare('SELECT description, qty FROM bundle_items WHERE bundle_id = ? ORDER BY id')
+      .all(id);
+    const resolved = [];
+    const missing = [];
+    for (const item of items) {
+      const charge = db.prepare('SELECT * FROM charges WHERE is_active = 1 AND description = ?')
+        .get(item.description);
+      if (charge) resolved.push({ charge: charge, qty: item.qty });
+      else missing.push(item.description);
+    }
+    return { resolved: resolved, missing: missing };
+  }
+
   function invoicesBetween(fromDate, toDate) {
     const rows = db.prepare(`SELECT * FROM invoices WHERE invoice_date BETWEEN ? AND ?
       ORDER BY invoice_date, id`).all(fromDate, toDate);
@@ -195,6 +246,7 @@ function createRepository(db) {
   return {
     getDistributor, saveDistributor,
     activeCharges, allCharges, addCharge, reviseCharge, chargeUsageCount,
+    listBundles, saveBundle, deleteBundle, resolveBundle,
     findConsumer, searchConsumers, importConsumers,
     nextInvoicePreview, saveInvoice, getInvoice, invoicesBetween
   };

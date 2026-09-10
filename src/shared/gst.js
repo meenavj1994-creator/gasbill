@@ -82,6 +82,7 @@ function computeInvoice(lines, supplierStateCode, placeOfSupplyCode) {
   let cgst = 0;
   let sgst = 0;
   let igst = 0;
+  const buckets = new Map();
 
   const priced = lines.map(function (line) {
     const qty = Number(line.qty) || 0;
@@ -90,16 +91,38 @@ function computeInvoice(lines, supplierStateCode, placeOfSupplyCode) {
     const lineTotal = round2(qty * rate);
     const tax = round2(lineTotal * gstRate / 100);
 
+    if (!buckets.has(gstRate)) {
+      buckets.set(gstRate, { rate: gstRate, taxable: 0, cgst: 0, sgst: 0, igst: 0 });
+    }
+    const bucket = buckets.get(gstRate);
+    bucket.taxable += lineTotal;
+
     taxable += lineTotal;
     if (intraState) {
       const half = round2(tax / 2);
       cgst += half;
       sgst += round2(tax - half);
+      bucket.cgst += half;
+      bucket.sgst += round2(tax - half);
     } else {
       igst += tax;
+      bucket.igst += tax;
     }
     return Object.assign({}, line, { lineTotal, taxAmount: tax });
   });
+
+  /* One row per GST rate. A single "CGST @ 9%" line cannot describe an invoice
+     that mixes an 18% hot plate with a 5% service, and the rate-wise breakup is
+     what a GST invoice is supposed to carry anyway. */
+  const byRate = Array.from(buckets.values()).map(function (b) {
+    return {
+      rate: b.rate,
+      taxable: round2(b.taxable),
+      cgst: round2(b.cgst),
+      sgst: round2(b.sgst),
+      igst: round2(b.igst)
+    };
+  }).sort(function (a, b) { return a.rate - b.rate; });
 
   taxable = round2(taxable);
   cgst = round2(cgst);
@@ -110,7 +133,43 @@ function computeInvoice(lines, supplierStateCode, placeOfSupplyCode) {
   const total = Math.round(beforeRounding);
   const rounding = round2(total - beforeRounding);
 
-  return { lines: priced, intraState, taxable, cgst, sgst, igst, beforeRounding, rounding, total };
+  return { lines: priced, intraState, taxable, cgst, sgst, igst, byRate, beforeRounding, rounding, total };
+}
+
+/* The rate-wise breakup for an invoice already saved. Nothing stores it, but
+   each saved line carries its own gst_rate and tax_amount, which is enough to
+   rebuild it — and the printed invoice needs it to state the tax honestly when
+   rates differ across lines. */
+function taxBreakupFromLines(lines, intraState) {
+  const buckets = new Map();
+
+  for (const line of lines || []) {
+    const rate = Number(line.gst_rate) || 0;
+    if (!buckets.has(rate)) {
+      buckets.set(rate, { rate: rate, taxable: 0, cgst: 0, sgst: 0, igst: 0 });
+    }
+    const bucket = buckets.get(rate);
+    bucket.taxable += Number(line.line_total) || 0;
+
+    const tax = Number(line.tax_amount) || 0;
+    if (intraState) {
+      const half = round2(tax / 2);
+      bucket.cgst += half;
+      bucket.sgst += round2(tax - half);
+    } else {
+      bucket.igst += tax;
+    }
+  }
+
+  return Array.from(buckets.values()).map(function (b) {
+    return {
+      rate: b.rate,
+      taxable: round2(b.taxable),
+      cgst: round2(b.cgst),
+      sgst: round2(b.sgst),
+      igst: round2(b.igst)
+    };
+  }).sort(function (a, b) { return a.rate - b.rate; });
 }
 
 const ONES = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten',
@@ -157,6 +216,7 @@ module.exports = {
   periodKey,
   seriesPrefix,
   computeInvoice,
+  taxBreakupFromLines,
   amountInWords,
   round2
 };

@@ -138,6 +138,34 @@ const migrations = [
       db.exec(`ALTER TABLE invoice_counters RENAME COLUMN fy_label TO period_key`);
     }
   }
+  ,{
+    version: 5,
+    name: 'product items and predefined sets',
+    up: function (db) {
+      // Hot plates and hoses bill exactly like a service line — description,
+      // amount, GST rate, quantity — so they live in the same table. `kind`
+      // only decides which group they appear under.
+      db.exec(`ALTER TABLE charges ADD COLUMN kind TEXT NOT NULL DEFAULT 'service'`);
+
+      db.exec(`
+        CREATE TABLE bundles (
+          id INTEGER PRIMARY KEY,
+          name TEXT NOT NULL,
+          is_active INTEGER NOT NULL DEFAULT 1,
+          created_at TEXT NOT NULL
+        );
+
+        CREATE TABLE bundle_items (
+          id INTEGER PRIMARY KEY,
+          bundle_id INTEGER NOT NULL REFERENCES bundles(id) ON DELETE CASCADE,
+          description TEXT NOT NULL,
+          qty REAL NOT NULL DEFAULT 1
+        );
+
+        CREATE INDEX idx_bundle_items_bundle ON bundle_items (bundle_id);
+      `);
+    }
+  }
 ];
 
 function migrate(db) {

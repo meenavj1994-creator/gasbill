@@ -124,6 +124,53 @@ test('halves an odd tax amount without losing a paisa', function () {
   assert.strictEqual(g.round2(r.cgst + r.sgst), g.round2(r.taxable * 0.18));
 });
 
+test('tax is broken out per rate when an invoice mixes them', function () {
+  const out = g.computeInvoice([
+    { description: 'Installation', qty: 1, rate: 100, gstRate: 18 },
+    { description: 'Two burner hot plate', qty: 1, rate: 2000, gstRate: 28 },
+    { description: 'Mechanic visit', qty: 1, rate: 200, gstRate: 18 }
+  ], '23', '23');
+
+  assert.strictEqual(out.byRate.length, 2, 'one row per distinct rate');
+  assert.deepStrictEqual(out.byRate.map(function (b) { return b.rate; }), [18, 28]);
+
+  const eighteen = out.byRate[0];
+  assert.strictEqual(eighteen.taxable, 300);
+  assert.strictEqual(eighteen.cgst, 27);
+  assert.strictEqual(eighteen.sgst, 27);
+
+  const twentyEight = out.byRate[1];
+  assert.strictEqual(twentyEight.taxable, 2000);
+  assert.strictEqual(twentyEight.cgst, 280);
+
+  const sum = out.byRate.reduce(function (s, b) { return s + b.cgst + b.sgst; }, 0);
+  assert.strictEqual(g.round2(sum), g.round2(out.cgst + out.sgst),
+    'the breakup has to add back to the invoice total');
+});
+
+test('a saved invoice can be broken up again from its lines', function () {
+  /* Nothing stores the breakup, so the printed copy rebuilds it from the
+     saved lines. It has to agree with what was computed at save time. */
+  const computed = g.computeInvoice([
+    { description: 'Installation', qty: 1, rate: 100, gstRate: 18 },
+    { description: 'Hot plate', qty: 1, rate: 2000, gstRate: 28 }
+  ], '23', '23');
+
+  const saved = computed.lines.map(function (l) {
+    return { gst_rate: l.gstRate, line_total: l.lineTotal, tax_amount: l.taxAmount };
+  });
+
+  assert.deepStrictEqual(g.taxBreakupFromLines(saved, true), computed.byRate);
+});
+
+test('the breakup follows IGST out of state', function () {
+  const out = g.computeInvoice([
+    { description: 'Hot plate', qty: 1, rate: 1000, gstRate: 18 }
+  ], '23', '27');
+  assert.strictEqual(out.byRate[0].igst, 180);
+  assert.strictEqual(out.byRate[0].cgst, 0);
+});
+
 console.log('\nAmount in words');
 
 test('writes a plain rupee amount', function () {

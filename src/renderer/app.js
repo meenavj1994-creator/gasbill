@@ -40,6 +40,7 @@ async function boot() {
 
   charges = await unwrap(window.api.charges.active());
   populateChargeSelect();
+  await populateSetSelect();
 
   const unconfirmed = charges.filter(function (c) { return c.needs_confirmation; }).length;
   if (unconfirmed > 0) {
@@ -152,13 +153,65 @@ function makeCombo(input, listEl, getItems, onPick, renderItem) {
 function populateChargeSelect() {
   const select = $('charge-select');
   select.innerHTML = '';
-  charges.forEach(function (charge, index) {
+
+  /* Services and products are the same kind of line on an invoice, but a
+     distributor thinks of them separately, so they get their own groups. */
+  const groups = [
+    ['Service charges', 'service'],
+    ['Products', 'product']
+  ];
+
+  for (const group of groups) {
+    const matching = charges
+      .map(function (charge, index) { return { charge: charge, index: index }; })
+      .filter(function (entry) {
+        return group[1] === 'product'
+          ? entry.charge.kind === 'product'
+          : entry.charge.kind !== 'product';
+      });
+    if (!matching.length) continue;
+
+    const holder = document.createElement('optgroup');
+    holder.label = group[0];
+    for (const entry of matching) {
+      const option = document.createElement('option');
+      option.value = String(entry.index);
+      option.textContent = entry.charge.description + ' — ' + money(entry.charge.base_amount) +
+        (entry.charge.needs_confirmation ? ' · unconfirmed' : '');
+      holder.appendChild(option);
+    }
+    select.appendChild(holder);
+  }
+}
+
+async function populateSetSelect() {
+  const sets = await unwrap(window.api.bundles.list());
+  const select = $('set-select');
+  select.innerHTML = '';
+
+  for (const set of sets) {
     const option = document.createElement('option');
-    option.value = String(index);
-    option.textContent = charge.description + ' — ' + money(charge.base_amount) +
-      (charge.needs_confirmation ? ' · unconfirmed' : '');
+    option.value = String(set.id);
+    option.textContent = set.name + ' — ' + set.items.length +
+      (set.items.length === 1 ? ' item' : ' items');
     select.appendChild(option);
-  });
+  }
+
+  $('set-row').hidden = sets.length === 0;
+}
+
+async function addSelectedSet() {
+  const id = Number($('set-select').value);
+  if (!id) return;
+
+  const resolved = await unwrap(window.api.bundles.resolve(id));
+  for (const entry of resolved.resolved) {
+    for (let n = 0; n < (entry.qty || 1); n++) addLine(entry.charge);
+  }
+
+  if (resolved.missing.length) {
+    toast('Added, but ' + resolved.missing.join(' and ') + ' is no longer in the charge list', 'bad');
+  }
 }
 
 function addSelectedCharge() {
@@ -182,6 +235,7 @@ function wire() {
     });
 
   $('add-charge').addEventListener('click', addSelectedCharge);
+  $('add-set').addEventListener('click', addSelectedSet);
   $('charge-select').addEventListener('keydown', function (e) {
     if (e.key === 'Enter') { e.preventDefault(); addSelectedCharge(); }
   });
@@ -348,10 +402,37 @@ function syncDirty() {
 let animFrame = null;
 let displayed = 0;
 
+/* One row per GST rate rather than a fixed "CGST @ 9%" pair — an invoice can
+   now mix an 18% service with a 28% hot plate, and a single line cannot say
+   that truthfully. */
+function renderTaxRows(byRate, intraState) {
+  const box = $('t-tax-rows');
+  box.innerHTML = '';
+
+  for (const bucket of byRate || []) {
+    const parts = intraState
+      ? [['CGST @ ' + (bucket.rate / 2) + '%', bucket.cgst], ['SGST @ ' + (bucket.rate / 2) + '%', bucket.sgst]]
+      : [['IGST @ ' + bucket.rate + '%', bucket.igst]];
+
+    for (const part of parts) {
+      const row = document.createElement('div');
+      row.className = 'total-row';
+      const label = document.createElement('span');
+      label.textContent = part[0];
+      const value = document.createElement('span');
+      value.textContent = money(part[1]);
+      row.append(label, value);
+      box.appendChild(row);
+    }
+  }
+}
+
 async function recalc() {
   if (lines.length === 0) {
     totals = null;
-    ['t-taxable', 't-cgst', 't-sgst', 't-rounding'].forEach(function (id) { $(id).textContent = '0.00'; });
+    $('t-taxable').textContent = '0.00';
+    $('t-rounding').textContent = '0.00';
+    renderTaxRows([], true);
     animateTotal(0);
     $('t-words').textContent = '';
     return;
@@ -359,10 +440,13 @@ async function recalc() {
 
   totals = await unwrap(window.api.compute(lines, distributor.state_code, distributor.state_code));
   $('t-taxable').textContent = money(totals.taxable);
-  $('t-cgst').textContent = money(totals.cgst);
-  $('t-sgst').textContent = money(totals.sgst);
+  renderTaxRows(totals.byRate, totals.intraState);
   $('t-rounding').textContent = (totals.rounding >= 0 ? '+' : '') + money(totals.rounding);
   animateTotal(totals.total);
+}
+
+function showTotal(value) {
+  $('t-total').textContent = '₹' + Math.round(value).toLocaleString('en-IN');
 }
 
 function animateTotal(target) {
@@ -370,14 +454,26 @@ function animateTotal(target) {
   const from = displayed;
   const start = performance.now();
 
-  (function step(now) {
+  /* The real figure goes up first, synchronously. requestAnimationFrame does
+     not tick while Chromium considers the window occluded, and counting up to
+     the total is decoration — showing ₹0 on a finished invoice because a frame
+     never arrived is not. The animation overwrites this on its first frame and
+     lands on the same number. */
+  displayed = target;
+  showTotal(target);
+
+  function step(now) {
     const p = Math.min((now - start) / 300, 1);
     const eased = 1 - Math.pow(1 - p, 3);
     displayed = from + (target - from) * eased;
-    $('t-total').textContent = '₹' + Math.round(displayed).toLocaleString('en-IN');
+    showTotal(displayed);
     if (p < 1) animFrame = requestAnimationFrame(step);
     else displayed = target;
-  })(start);
+  }
+
+  // Scheduled, never called inline — calling it here would immediately paint
+  // the old value back over the one just written.
+  animFrame = requestAnimationFrame(step);
 }
 
 async function submit(thenPrint) {
@@ -428,16 +524,17 @@ async function submit(thenPrint) {
   }
 
   if (thenPrint) {
-    renderPrintable(saved);
+    await renderPrintable(saved);
     await window.api.print();
   }
   toast('Saved as ' + saved.invoice_no, 'ok');
   reset();
 }
 
-function renderPrintable(invoice) {
+async function renderPrintable(invoice) {
   const area = $('print-area');
   area.innerHTML = '';
+  const breakup = await unwrap(window.api.taxBreakup(invoice.lines, !(invoice.igst > 0)));
 
   ['Original for recipient', 'Duplicate for supplier'].forEach(function (copyLabel) {
     const node = $('invoice-template').content.cloneNode(true);
@@ -494,8 +591,14 @@ function renderPrintable(invoice) {
 
     const totalsBox = node.querySelector('[data-totals]');
     const rows = [['Taxable value', money(invoice.taxable_value)]];
-    if (invoice.igst > 0) rows.push(['IGST', money(invoice.igst)]);
-    else rows.push(['CGST @ 9%', money(invoice.cgst)], ['SGST @ 9%', money(invoice.sgst)]);
+    for (const bucket of breakup) {
+      if (invoice.igst > 0) {
+        rows.push(['IGST @ ' + bucket.rate + '%', money(bucket.igst)]);
+      } else {
+        rows.push(['CGST @ ' + (bucket.rate / 2) + '%', money(bucket.cgst)]);
+        rows.push(['SGST @ ' + (bucket.rate / 2) + '%', money(bucket.sgst)]);
+      }
+    }
     rows.push(['Rounding', money(invoice.rounding)]);
 
     rows.forEach(function (pair) {

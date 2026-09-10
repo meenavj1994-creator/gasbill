@@ -23,6 +23,12 @@ contextBridge.exposeInMainWorld('api', {
     add: call('charges:add'),
     revise: call('charges:revise')
   },
+  bundles: {
+    list: call('bundles:list'),
+    save: call('bundles:save'),
+    remove: call('bundles:delete'),
+    resolve: call('bundles:resolve')
+  },
   consumers: {
     find: call('consumers:find'),
     search: call('consumers:search'),
@@ -40,6 +46,7 @@ contextBridge.exposeInMainWorld('api', {
   },
   validateGstin: call('gstin:validate'),
   compute: call('compute'),
+  taxBreakup: call('taxBreakup'),
   backup: { run: call('backup:run'), last: call('backup:last') },
   pickFolder: call('dialog:pickFolder'),
   print: call('print:invoice'),

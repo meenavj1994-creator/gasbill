@@ -169,6 +169,105 @@ test('a past invoice is untouched when the rate later changes', function () {
   assert.strictEqual(reread.total, 236);
 });
 
+console.log('\nProducts and sets');
+
+test('a product is stored and read back as one', function () {
+  const { repo } = freshRepo();
+  const hob = repo.addCharge({
+    description: 'Two burner hot plate', base_amount: 2400, gst_rate: 18,
+    effective_from: '2026-04-01', kind: 'product'
+  });
+  assert.strictEqual(hob.kind, 'product');
+  assert.strictEqual(repo.addCharge({
+    description: 'Visit charges', base_amount: 100, gst_rate: 18, effective_from: '2026-04-01'
+  }).kind, 'service', 'anything not said to be a product stays a service');
+});
+
+test('revising a product keeps it a product', function () {
+  const { repo } = freshRepo();
+  const hose = repo.addCharge({
+    description: 'Suraksha hose', base_amount: 190, gst_rate: 18,
+    effective_from: '2026-04-01', kind: 'product'
+  });
+  const revised = repo.reviseCharge(hose.id, { base_amount: 220, effective_from: '2026-10-01' });
+  assert.strictEqual(revised.kind, 'product');
+});
+
+test('a set resolves to the charges it names', function () {
+  const { repo } = freshRepo();
+  repo.addCharge({ description: 'Installation', base_amount: 100, gst_rate: 18, effective_from: '2026-04-01' });
+  repo.addCharge({ description: 'Suraksha hose', base_amount: 190, gst_rate: 18, effective_from: '2026-04-01', kind: 'product' });
+
+  const set = repo.saveBundle({
+    name: 'New connection',
+    items: [{ description: 'Installation', qty: 1 }, { description: 'Suraksha hose', qty: 2 }]
+  });
+
+  const out = repo.resolveBundle(set.id);
+  assert.strictEqual(out.missing.length, 0);
+  assert.deepStrictEqual(out.resolved.map(function (r) { return r.charge.description; }),
+    ['Installation', 'Suraksha hose']);
+  assert.strictEqual(out.resolved[1].qty, 2, 'the quantity travels with the set');
+});
+
+test('a set follows a revised rate rather than the old one', function () {
+  const { repo } = freshRepo();
+  const charge = repo.addCharge({
+    description: 'Installation', base_amount: 100, gst_rate: 18, effective_from: '2026-04-01'
+  });
+  repo.saveBundle({ name: 'New connection', items: [{ description: 'Installation', qty: 1 }] });
+  repo.reviseCharge(charge.id, { base_amount: 250, effective_from: '2026-10-01' });
+
+  const out = repo.resolveBundle(repo.listBundles()[0].id);
+  assert.strictEqual(out.resolved[0].charge.base_amount, 250,
+    'revising a charge makes a new row, so a set keyed on id would have gone stale');
+});
+
+test('a set reports items it can no longer find', function () {
+  const { repo } = freshRepo();
+  repo.saveBundle({ name: 'New connection', items: [{ description: 'Gone missing', qty: 1 }] });
+  const out = repo.resolveBundle(repo.listBundles()[0].id);
+  assert.strictEqual(out.resolved.length, 0);
+  assert.deepStrictEqual(out.missing, ['Gone missing']);
+});
+
+test('the seeded new-connection set resolves against the seeded charges', function () {
+  const { repo } = freshRepo();
+  const { seedCharges, seedBundles } = require('../src/main/seed');
+  seedCharges(repo);
+  seedBundles(repo);
+
+  const sets = repo.listBundles();
+  assert.strictEqual(sets.length, 1);
+  assert.strictEqual(sets[0].name, 'New connection');
+
+  const out = repo.resolveBundle(sets[0].id);
+  assert.deepStrictEqual(out.missing, [],
+    'every seeded set item must name a charge that is actually seeded');
+  assert.strictEqual(out.resolved.length, 3);
+});
+
+test('seeding twice does not stack duplicate sets', function () {
+  const { repo } = freshRepo();
+  const { seedCharges, seedBundles } = require('../src/main/seed');
+  seedCharges(repo);
+  seedBundles(repo);
+  seedBundles(repo);
+  assert.strictEqual(repo.listBundles().length, 1);
+});
+
+test('saving a set again replaces its items instead of doubling them', function () {
+  const { repo } = freshRepo();
+  repo.addCharge({ description: 'Installation', base_amount: 100, gst_rate: 18, effective_from: '2026-04-01' });
+  const set = repo.saveBundle({ name: 'New connection', items: [{ description: 'Installation', qty: 1 }] });
+  repo.saveBundle({ id: set.id, name: 'New connection', items: [{ description: 'Installation', qty: 3 }] });
+
+  const bundles = repo.listBundles();
+  assert.strictEqual(bundles.length, 1);
+  assert.strictEqual(bundles[0].items.length, 1);
+  assert.strictEqual(bundles[0].items[0].qty, 3);
+});
+
 console.log('\nConsumer import');
 
 test('upserts on consumer number and counts correctly', function () {

@@ -121,7 +121,8 @@ draft recovery. Whatever was on screen is gone on next launch.
   lines with quantity, live totals, save and print.
 - `setup.html` — first run. Certificate upload with field extraction, GSTIN
   validation, series prefix with a live length check, backup folder.
-- `charges.html` — charges master. Add, confirm, and revise rates.
+- `charges.html` — charges, products and sets. Add, confirm and revise items,
+  and group the ones that get billed together.
 - `consumers.html` — XLSX/CSV import with column mapping and guessed defaults.
 - `reports.html` — workbook export by financial year, month, or custom dates.
 - `settings.html` — edit the business details, logo, series prefix,
@@ -233,6 +234,33 @@ the string themselves, so the sixteen-character rule lives in one place.
 Three letters is the ceiling — `SH1/2627/09/0001` is exactly sixteen — so the
 prefix inputs are capped at three rather than letting someone type a fourth
 and only find out on save.
+
+## Items, sets and GST rates
+
+A hot plate bills exactly like a service line — description, amount, GST rate,
+quantity — so products live in the same `charges` table under `kind`, which
+only decides which group they appear under. Everything that applies to a
+charge (versioning, confirmation, revision) applies to a product unchanged.
+
+A **set** is a group of items billed together; picking one on the billing
+screen adds them all. Sets store the item **description**, not its id, because
+revising a rate writes a brand new charge row with a new id — an id reference
+would go stale the first time anyone changed a price. Anything a set names that
+no longer matches an active charge comes back as `missing` and is reported
+rather than silently dropped.
+
+`New connection` is seeded, but neither inspection charge is in it: which one
+applies depends on whether the connection is PMUY, and that is not a call this
+app should make. Edit the set to match how the territory actually bills.
+
+**GST rate is per item, and the tax lines follow it.** They used to read
+`CGST @ 9%` as literal text in both the totals panel and the printed invoice,
+which would have quietly printed the wrong rate on a tax document the moment
+anything was not 18%. Both now render one row per rate — an invoice carrying an
+18% hose and a 28% hot plate shows CGST/SGST at 9% and at 14% separately, which
+is the rate-wise breakup GST wants anyway. Nothing stores the breakup, so the
+printed copy rebuilds it from the saved lines, and a test asserts the rebuilt
+one matches what was computed at save time.
 
 ## More than one machine at an agency
 

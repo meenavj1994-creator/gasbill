@@ -391,8 +391,36 @@ button.blue:hover { background: var(--blue-dark); border-color: var(--blue-dark)
 .charge-actions { display: flex; align-items: center; gap: 10px; margin-top: 11px; }
 .charge-actions .line-remove { margin-left: auto; }
 
+.group-head {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--slate);
+  margin: 26px 0 10px;
+}
+
+.pick-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  margin-bottom: 6px;
+  background: rgba(255,255,255,0.55);
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: border-color var(--fast) var(--ease), background var(--fast) var(--ease);
+}
+.pick-row:hover { border-color: var(--blue-edge); background: #fff; }
+.pick-row input[type="checkbox"] { width: 18px; min-height: 18px; flex: 0 0 auto; cursor: pointer; }
+.pick-name { flex: 1; font-size: 14px; }
+.pick-qty { width: 72px; flex: 0 0 auto; min-height: 34px; padding: 4px 8px; text-align: center; }
+
 .badge { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 20px; }
 .badge-on { background: var(--green-tint); color: var(--green); }
+.badge-off { background: var(--blue-tint); color: var(--blue-dark); }
 .badge-warn { background: var(--gold-tint); color: var(--gold-deep); border: 1px solid var(--gold-edge); }
 
 .revise-panel {

@@ -7,7 +7,7 @@ const Database = require('better-sqlite3');
 const { migrate } = require('./migrations');
 const { createRepository } = require('./repository');
 const gst = require('../shared/gst');
-const { seedCharges } = require('./seed');
+const { seedCharges, seedBundles } = require('./seed');
 const { parseCertificate } = require('./certificate');
 const reports = require('./reports');
 const { extractText } = require('./extract');
@@ -28,6 +28,7 @@ function openDatabase() {
   migrate(db);
   repo = createRepository(db);
   seedCharges(repo);
+  seedBundles(repo);
 }
 
 function runBackup() {
@@ -227,6 +228,11 @@ handle('charges:all', function () { return repo.allCharges(); });
 handle('charges:add', function (c) { return repo.addCharge(c); });
 handle('charges:revise', function (id, next) { return repo.reviseCharge(id, next); });
 
+handle('bundles:list', function () { return repo.listBundles(); });
+handle('bundles:save', function (b) { return repo.saveBundle(b); });
+handle('bundles:delete', function (id) { return repo.deleteBundle(id); });
+handle('bundles:resolve', function (id) { return repo.resolveBundle(id); });
+
 handle('consumers:find', function (no) { return repo.findConsumer(no); });
 handle('consumers:search', function (query, limit) { return repo.searchConsumers(query, limit); });
 handle('consumers:import', function (rows) { return repo.importConsumers(rows); });
@@ -239,6 +245,9 @@ handle('invoice:between', function (from, to) { return repo.invoicesBetween(from
 handle('gstin:validate', function (value, stateCode) { return gst.validateGstin(value, stateCode); });
 handle('compute', function (lines, supplierState, posCode) {
   return gst.computeInvoice(lines, supplierState, posCode);
+});
+handle('taxBreakup', function (lines, intraState) {
+  return gst.taxBreakupFromLines(lines, intraState);
 });
 
 handle('consumers:parseFile', function (filePath) {

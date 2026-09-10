@@ -74,8 +74,12 @@
         <h2>Charges</h2>
         <span class="kbd-hint">Ctrl K to jump here</span>
       </div>
+      <div class="row" id="set-row" hidden>
+        <select id="set-select" aria-label="Predefined set"></select>
+        <button id="add-set" type="button">Add set</button>
+      </div>
       <div class="row">
-        <select id="charge-select" aria-label="Charge type"></select>
+        <select id="charge-select" aria-label="Charge or product"></select>
         <button id="add-charge" type="button">Add</button>
       </div>
       <ul id="line-list" class="line-list"></ul>
@@ -86,8 +90,7 @@
     </div><aside class="col-side">
     <section class="totals">
       <div class="total-row"><span>Taxable value</span><span id="t-taxable">0.00</span></div>
-      <div class="total-row"><span id="t-cgst-label">CGST @ 9%</span><span id="t-cgst">0.00</span></div>
-      <div class="total-row"><span id="t-sgst-label">SGST @ 9%</span><span id="t-sgst">0.00</span></div>
+      <div id="t-tax-rows"></div>
       <div class="total-row"><span>Rounding</span><span id="t-rounding">0.00</span></div>
       <div class="total-row total-row-final"><span>Total</span><span id="t-total">₹0</span></div>
     </section>
