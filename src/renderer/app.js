@@ -52,10 +52,14 @@ async function boot() {
   render();
   $('consumer-no').focus();
 
-  window.api.updates.onReady(function (version) {
-    $('update-text').textContent = 'Version ' + version + ' has been downloaded.';
-    $('update-banner').hidden = false;
-  });
+  const pendingVersion = await unwrap(window.api.updates.pending());
+  if (pendingVersion) showUpdateBanner(pendingVersion);
+  window.api.updates.onReady(showUpdateBanner);
+}
+
+function showUpdateBanner(version) {
+  $('update-text').textContent = 'Version ' + version + ' has been downloaded.';
+  $('update-banner').hidden = false;
 }
 
 async function refreshNumber() {

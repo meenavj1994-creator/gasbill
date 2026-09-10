@@ -39,6 +39,7 @@ contextBridge.exposeInMainWorld('api', {
   pickFolder: call('dialog:pickFolder'),
   print: call('print:invoice'),
   updates: {
+    pending: call('update:pending'),
     onReady: function (callback) {
       ipcRenderer.on('update:ready', function (event, version) { callback(version); });
     },

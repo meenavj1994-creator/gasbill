@@ -81,9 +81,13 @@ function createWindow() {
   });
 }
 
+let pendingUpdateVersion = null;
+
 function checkForUpdates() {
   if (!app.isPackaged) return;
+  autoUpdater.autoDownload = true;
   autoUpdater.on('update-downloaded', function (info) {
+    pendingUpdateVersion = info.version;
     if (win) win.webContents.send('update:ready', info.version);
   });
   autoUpdater.on('error', function (err) {
@@ -214,5 +218,7 @@ ipcMain.handle('print:invoice', function () {
 ipcMain.handle('update:install', function () {
   autoUpdater.quitAndInstall();
 });
+
+handle('update:pending', function () { return pendingUpdateVersion; });
 
 ipcMain.on('app:dirty', function (event, isDirty) { dirty = isDirty; });
