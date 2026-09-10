@@ -60,9 +60,26 @@ or (bash)
 
     GH_TOKEN=<token> npm run dist
 
-`npm run dist` passes `--publish always`, so electron-builder publishes the
-installer and `latest.yml` straight to a new GitHub Release — not a draft.
-Already-installed copies of the app pick it up next launch.
+Two separate settings both have to be right, and only one of them is the
+`--publish always` flag that `npm run dist` passes. That flag decides
+*whether* to upload at all; `build.publish[].releaseType` decides what state
+the release lands in, and electron-builder defaults it to `draft`. A draft is
+invisible to the updater and to anyone not logged in as you, so a build that
+reports success can still reach nobody. `releaseType: "release"` is set for
+exactly this reason — if a release ever shows a **Draft** badge on GitHub, no
+installed copy will see it until it's published.
+
+After publishing, check
+[the releases page](https://github.com/meenavj1994-creator/gasbill/releases):
+the newest entry should say **Latest**, not **Draft**, and carry three assets
+(`.exe`, `.exe.blockmap`, `latest.yml`).
+
+An installed copy checks on launch, downloads in the background, and shows the
+banner when the file is ready. It does not have to be the button that applies
+it — `autoInstallOnAppQuit` is on by default, so an update the user ignores
+still installs the next time they close the app.
+
+Pushing to `main` publishes nothing. Only `npm run dist` cuts a release.
 
 ## The two copies
 

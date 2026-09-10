@@ -46,6 +46,7 @@
     "nsis": {
       "oneClick": false,
       "perMachine": false,
+      "differentialPackage": true,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
@@ -55,7 +56,8 @@
       {
         "provider": "github",
         "owner": "meenavj1994-creator",
-        "repo": "gasbill"
+        "repo": "gasbill",
+        "releaseType": "release"
       }
     ],
     "extraResources": [
