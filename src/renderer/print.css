@@ -51,7 +51,9 @@ body { background: #fff; }
   white-space: nowrap;
 }
 
-.doc-supplier { margin-bottom: 3.5pt; }
+.doc-supplier { display: flex; align-items: center; gap: 8pt; margin-bottom: 3.5pt; }
+.doc-logo { height: 24pt; max-width: 70pt; object-fit: contain; }
+.doc-supplier-text { min-width: 0; }
 .doc-supplier-name { font-weight: 700; font-size: 9.5pt; }
 .doc-mono { font-family: Consolas, monospace; font-size: 8pt; }
 

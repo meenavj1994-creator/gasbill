@@ -472,6 +472,17 @@ button:disabled { opacity: 0.55; cursor: default; }
 .setup-section p.hint:first-of-type { margin-top: 18px; }
 .setup-section .field:last-child { margin-bottom: 0; }
 
+.logo-preview {
+  display: block;
+  max-height: 48px;
+  max-width: 220px;
+  margin-top: 10px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  background: var(--paper);
+}
+
 .field-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

@@ -442,6 +442,13 @@ function renderPrintable(invoice) {
       if (el) el.textContent = text || '';
     };
 
+    const logo = node.querySelector('[data-logo]');
+    if (logo && distributor.logo_path) {
+      logo.addEventListener('error', function () { logo.hidden = true; });
+      logo.src = 'file:///' + distributor.logo_path.replace(/\\/g, '/');
+      logo.hidden = false;
+    }
+
     set('[data-copy]', copyLabel);
     set('[data-trade-name]', distributor.trade_name);
     set('[data-supplier-address]', distributor.address);

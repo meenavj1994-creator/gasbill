@@ -3,12 +3,33 @@
 const $ = function (id) { return document.getElementById(id); };
 const STATE_CODE = '23';
 let backupFolder = null;
+let logoPath = null;
 
 async function unwrap(p) {
   const r = await p;
   if (!r.ok) throw new Error(r.error);
   return r.data;
 }
+
+function toFileUrl(p) {
+  return 'file:///' + p.replace(/\\/g, '/');
+}
+
+function setLogo(path) {
+  logoPath = path;
+  $('logo-preview').src = toFileUrl(path);
+  $('logo-preview').hidden = false;
+}
+
+(async function loadDefaultLogo() {
+  const def = await unwrap(window.api.branding.defaultLogo());
+  if (def) setLogo(def);
+})();
+
+$('logo-file').addEventListener('change', function (e) {
+  const file = e.target.files[0];
+  if (file) setLogo(file.path);
+});
 
 $('cert-file').addEventListener('change', async function (e) {
   const file = e.target.files[0];
@@ -119,7 +140,7 @@ $('finish').addEventListener('click', async function () {
     gstin: $('gstin').value.trim().toUpperCase(),
     state_code: STATE_CODE,
     phone: $('phone').value.trim() || null,
-    logo_path: null,
+    logo_path: logoPath,
     certificate_path: $('cert-file').files[0] ? $('cert-file').files[0].path : null,
     series_prefix: $('prefix').value.trim().toUpperCase() || 'BG',
     ack_text: $('ack').value.trim() || null,

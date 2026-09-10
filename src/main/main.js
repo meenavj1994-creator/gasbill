@@ -123,6 +123,11 @@ function handle(channel, fn) {
 handle('distributor:get', function () { return repo.getDistributor(); });
 handle('distributor:save', function (d) { return repo.saveDistributor(d); });
 
+handle('branding:defaultLogo', function () {
+  const p = path.join(__dirname, '..', '..', 'resources', 'branding', 'bharatgas-logo.png');
+  return fs.existsSync(p) ? p : null;
+});
+
 handle('charges:active', function () { return repo.activeCharges(); });
 handle('charges:all', function () { return repo.allCharges(); });
 handle('charges:add', function (c) { return repo.addCharge(c); });

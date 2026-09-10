@@ -11,6 +11,7 @@ function call(channel) {
 
 contextBridge.exposeInMainWorld('api', {
   distributor: { get: call('distributor:get'), save: call('distributor:save') },
+  branding: { defaultLogo: call('branding:defaultLogo') },
   charges: {
     active: call('charges:active'),
     all: call('charges:all'),
