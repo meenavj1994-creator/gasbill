@@ -157,6 +157,88 @@ test('monthly totals split by month and reconcile', function () {
   assert.strictEqual(gst.round2(sum), gst.round2(invSum));
 });
 
+test('the month period covers the whole calendar month', function () {
+  const p = reports.periodForMonth(new Date(2026, 8, 15));
+  assert.strictEqual(p.from, '2026-09-01');
+  assert.strictEqual(p.to, '2026-09-30');
+  assert.strictEqual(p.label, '2026-09');
+});
+
+test('period ends are not dragged back a day by the timezone', function () {
+  /* Building these from local midnight and running them through
+     toISOString() lands on the previous day anywhere east of UTC, which took
+     31 March out of the financial year it belongs to. */
+  assert.strictEqual(reports.periodForFinancialYear(new Date(2026, 8, 3)).to, '2027-03-31');
+  assert.strictEqual(reports.periodForMonth(new Date(2026, 1, 10)).to, '2026-02-28');
+  assert.strictEqual(reports.periodForMonth(new Date(2026, 0, 1)).from, '2026-01-01');
+});
+
+test('merging two machines interleaves them by date', function () {
+  const merged = reports.mergeInvoices([
+    { source: 'SH', invoices: [
+      { invoice_no: 'SH/2627/09/0001', invoice_date: '2026-09-03', customer_name: 'A' },
+      { invoice_no: 'SH/2627/09/0002', invoice_date: '2026-09-09', customer_name: 'B' }
+    ] },
+    { source: 'SB', invoices: [
+      { invoice_no: 'SB/2627/09/0001', invoice_date: '2026-09-05', customer_name: 'C' }
+    ] }
+  ]);
+
+  assert.deepStrictEqual(merged.invoices.map(function (i) { return i.customer_name; }),
+    ['A', 'C', 'B']);
+  assert.deepStrictEqual(merged.invoices.map(function (i) { return i.source; }),
+    ['SH', 'SB', 'SH']);
+  assert.strictEqual(merged.duplicates.length, 0);
+});
+
+test('two machines sharing a prefix are caught as duplicates', function () {
+  /* Exactly the failure this is here to catch: both machines set up with the
+     same prefix, each counting from 0001 in its own database. */
+  const merged = reports.mergeInvoices([
+    { source: 'SH', invoices: [
+      { invoice_no: 'SH/2627/09/0001', invoice_date: '2026-09-03', customer_name: 'Ramesh' }
+    ] },
+    { source: 'SH', invoices: [
+      { invoice_no: 'SH/2627/09/0001', invoice_date: '2026-09-04', customer_name: 'Sunita' }
+    ] }
+  ]);
+
+  assert.strictEqual(merged.invoices.length, 2, 'both invoices are still reported');
+  assert.strictEqual(merged.duplicates.length, 1);
+  assert.strictEqual(merged.duplicates[0]['Invoice no'], 'SH/2627/09/0001');
+  assert.strictEqual(merged.duplicates[0]['Customer'], 'Sunita');
+});
+
+test('the register names the machine each invoice came from', function () {
+  const invoices = seededRepo().invoicesBetween('2026-04-01', '2027-03-31')
+    .map(function (inv) { return Object.assign({ source: 'SH' }, inv); });
+  const rows = reports.invoiceRegister(invoices);
+  assert.strictEqual(rows[0].Machine, 'SH');
+});
+
+test('a workbook only grows a duplicates sheet when there are duplicates', function () {
+  const invoices = seededRepo().invoicesBetween('2026-04-01', '2027-03-31');
+  const names = [];
+  const XLSXStub = {
+    utils: {
+      book_new: function () { return {}; },
+      json_to_sheet: function (rows) { return rows; },
+      book_append_sheet: function (wb, sheet, name) { names.push(name); }
+    }
+  };
+
+  reports.buildWorkbook(XLSXStub, { invoices: invoices, creditNotes: [] });
+  assert.ok(names.indexOf('DUPLICATE NUMBERS') < 0, 'clean export should not carry the sheet');
+
+  names.length = 0;
+  reports.buildWorkbook(XLSXStub, {
+    invoices: invoices,
+    creditNotes: [],
+    duplicates: [{ 'Invoice no': 'SH/2627/09/0001' }]
+  });
+  assert.strictEqual(names[0], 'DUPLICATE NUMBERS', 'it should lead the workbook');
+});
+
 test('a period with no invoices produces empty sheets, not a crash', function () {
   const invoices = seededRepo().invoicesBetween('2020-01-01', '2020-12-31');
   assert.strictEqual(reports.invoiceRegister(invoices).length, 0);

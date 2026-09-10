@@ -80,12 +80,15 @@
       </div>
 
       <div class="field">
-        <label for="prefix">Invoice series prefix</label>
-        <input id="prefix" maxlength="6" style="font-family:var(--mono);text-transform:uppercase" />
+        <label for="prefix">Invoice series prefix <span class="optional">up to 3 letters</span></label>
+        <input id="prefix" maxlength="3" style="font-family:var(--mono);text-transform:uppercase" />
         <p class="hint" id="prefix-preview"></p>
         <p class="error" id="prefix-error" hidden></p>
         <p class="hint">Changing this does not renumber invoices already saved, and the
           monthly counter keeps running from where it is.</p>
+        <p class="hint"><strong>Every machine at this agency needs its own prefix.</strong>
+          Counters are per machine, so two machines sharing a prefix will issue the same
+          invoice number to different customers.</p>
       </div>
     </section>
 

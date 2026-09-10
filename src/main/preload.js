@@ -30,7 +30,7 @@ contextBridge.exposeInMainWorld('api', {
     parseFile: call('consumers:parseFile')
   },
   certificate: { read: call('certificate:read') },
-  reports: { export: call('reports:export') },
+  reports: { export: call('reports:export'), period: call('reports:period') },
   saveWorkbook: call('dialog:saveWorkbook'),
   invoice: {
     preview: call('invoice:preview'),

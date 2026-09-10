@@ -8,6 +8,7 @@ function invoiceRegister(invoices) {
   return invoices.map(function (inv) {
     return {
       'Invoice no': inv.invoice_no,
+      'Machine': inv.source || '',
       'Date': inv.invoice_date,
       'Consumer no': inv.consumer_no || '',
       'Customer name': inv.customer_name,
@@ -178,6 +179,43 @@ function creditNoteRegister(notes) {
   });
 }
 
+/* Merges invoice sets coming from several machines, in date order, and reports
+   any invoice number that shows up twice. Each machine's database enforces its
+   own UNIQUE on invoice_no and cannot see the others, so a series prefix shared
+   between two machines stays invisible until exactly here. */
+function mergeInvoices(sets) {
+  const invoices = [];
+  for (const set of sets) {
+    for (const inv of set.invoices) {
+      invoices.push(Object.assign({}, inv, { source: set.source }));
+    }
+  }
+
+  invoices.sort(function (a, b) {
+    return String(a.invoice_date).localeCompare(String(b.invoice_date)) ||
+      String(a.invoice_no).localeCompare(String(b.invoice_no));
+  });
+
+  const seen = new Map();
+  const duplicates = [];
+  for (const inv of invoices) {
+    const first = seen.get(inv.invoice_no);
+    if (first) {
+      duplicates.push({
+        'Invoice no': inv.invoice_no,
+        'Raised on': first.source,
+        'Also raised on': inv.source,
+        'Date': inv.invoice_date,
+        'Customer': inv.customer_name
+      });
+    } else {
+      seen.set(inv.invoice_no, inv);
+    }
+  }
+
+  return { invoices: invoices, duplicates: duplicates };
+}
+
 function buildWorkbook(XLSX, data) {
   const wb = XLSX.utils.book_new();
   const sheets = [
@@ -189,6 +227,12 @@ function buildWorkbook(XLSX, data) {
     ['Monthly totals', monthlyTotals(data.invoices)]
   ];
 
+  /* Only ever non-empty when two machines shared a series prefix. It goes
+     first so nobody files the return without seeing it. */
+  if ((data.duplicates || []).length) {
+    sheets.unshift(['DUPLICATE NUMBERS', data.duplicates]);
+  }
+
   for (const pair of sheets) {
     const rows = pair[1].length ? pair[1] : [{ 'No records in this period': '' }];
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), pair[0]);
@@ -196,15 +240,32 @@ function buildWorkbook(XLSX, data) {
   return wb;
 }
 
+/* Local date parts, never toISOString(). The dates below are built at local
+   midnight, and converting those to UTC in any zone ahead of it rolls them
+   back a day — which silently dropped 31 March from the financial year. */
+function isoLocal(d) {
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') +
+    '-' + String(d.getDate()).padStart(2, '0');
+}
+
 function periodForFinancialYear(date) {
   const fy = gst.financialYear(date);
-  const iso = function (d) {
-    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  return { from: isoLocal(fy.startsOn), to: isoLocal(fy.endsOn), label: fy.label };
+}
+
+function periodForMonth(date) {
+  const d = date instanceof Date ? date : new Date(date);
+  const first = new Date(d.getFullYear(), d.getMonth(), 1);
+  const last = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+  return {
+    from: isoLocal(first),
+    to: isoLocal(last),
+    label: isoLocal(first).slice(0, 7)
   };
-  return { from: iso(fy.startsOn), to: iso(fy.endsOn), label: fy.label };
 }
 
 module.exports = {
   invoiceRegister, b2csSummary, b2bDetail, chargeSummary,
-  monthlyTotals, creditNoteRegister, buildWorkbook, periodForFinancialYear
+  monthlyTotals, creditNoteRegister, mergeInvoices, buildWorkbook,
+  periodForFinancialYear, periodForMonth
 };

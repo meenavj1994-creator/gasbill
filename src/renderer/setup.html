@@ -92,10 +92,13 @@
       </div>
 
       <div class="field">
-        <label for="prefix">Invoice series prefix <span class="optional">taken from your trade name — edit if you want a different code</span></label>
-        <input id="prefix" maxlength="6" style="font-family:var(--mono);text-transform:uppercase" />
+        <label for="prefix">Invoice series prefix <span class="optional">taken from your trade name — up to 3 letters</span></label>
+        <input id="prefix" maxlength="3" style="font-family:var(--mono);text-transform:uppercase" />
         <p class="hint" id="prefix-preview"></p>
         <p class="error" id="prefix-error" hidden></p>
+        <p class="hint"><strong>If another machine at this agency already runs GasBill, give
+          this one a different prefix</strong> — say SB where the other uses SH. Each machine
+          counts on its own, so a shared prefix means both issue the same invoice number.</p>
       </div>
     </section>
 

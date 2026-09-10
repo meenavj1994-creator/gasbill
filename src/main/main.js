@@ -272,14 +272,64 @@ ipcMain.handle('certificate:read', async function (event, filePath, expectedStat
   }
 });
 
-handle('reports:export', function (from, to, targetPath) {
-  const invoices = repo.invoicesBetween(from, to);
-  const notes = db.prepare(`SELECT n.*, i.invoice_no FROM credit_notes n
+/* Reads invoices out of another machine's database file. Opened strictly
+   read-only and never migrated — this is usually someone's backup, and a
+   report must not be able to write to it. */
+function invoicesFromFile(filePath, from, to) {
+  const other = new Database(filePath, { readonly: true, fileMustExist: true });
+  try {
+    const rows = other.prepare(`SELECT * FROM invoices WHERE invoice_date BETWEEN ? AND ?
+      ORDER BY invoice_date, id`).all(from, to);
+    for (const r of rows) {
+      r.lines = other.prepare('SELECT * FROM invoice_lines WHERE invoice_id = ?').all(r.id);
+    }
+    const label = (other.prepare('SELECT trade_name, series_prefix FROM distributor WHERE id = 1').get() || {});
+    const notes = other.prepare(`SELECT n.*, i.invoice_no FROM credit_notes n
+      JOIN invoices i ON i.id = n.invoice_id
+      WHERE n.note_date BETWEEN ? AND ? ORDER BY n.note_date`).all(from, to);
+    return { rows: rows, notes: notes, source: label.series_prefix || path.basename(filePath) };
+  } finally {
+    other.close();
+  }
+}
+
+handle('reports:period', function (which, iso) {
+  const when = iso ? new Date(iso) : new Date();
+  return which === 'month'
+    ? reports.periodForMonth(when)
+    : reports.periodForFinancialYear(when);
+});
+
+handle('reports:export', function (from, to, targetPath, extraPaths) {
+  const sets = [{
+    source: (repo.getDistributor() || {}).series_prefix || 'this machine',
+    invoices: repo.invoicesBetween(from, to)
+  }];
+  let notes = db.prepare(`SELECT n.*, i.invoice_no FROM credit_notes n
     JOIN invoices i ON i.id = n.invoice_id
     WHERE n.note_date BETWEEN ? AND ? ORDER BY n.note_date`).all(from, to);
-  const wb = reports.buildWorkbook(XLSX, { invoices: invoices, creditNotes: notes });
+
+  const merged = [];
+  for (const p of extraPaths || []) {
+    const other = invoicesFromFile(p, from, to);
+    sets.push({ source: other.source, invoices: other.rows });
+    notes = notes.concat(other.notes);
+    merged.push(other.source);
+  }
+
+  const combined = reports.mergeInvoices(sets);
+  const wb = reports.buildWorkbook(XLSX, {
+    invoices: combined.invoices,
+    creditNotes: notes,
+    duplicates: combined.duplicates
+  });
   XLSX.writeFile(wb, targetPath);
-  return { path: targetPath, invoices: invoices.length };
+  return {
+    path: targetPath,
+    invoices: combined.invoices.length,
+    merged: merged,
+    duplicates: combined.duplicates.length
+  };
 });
 
 handle('backup:run', function () { return runBackup(); });

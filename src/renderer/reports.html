@@ -38,6 +38,29 @@
     </div>
 
     <p class="hint" id="range-note"></p>
+
+    <section class="setup-section">
+      <div class="setup-section-head">
+        <span class="setup-num">+</span>
+        <div>
+          <div class="setup-section-title">Other machines at this agency</div>
+          <p class="setup-section-desc">Optional. Each machine keeps its own records, so a
+            return filed from one machine alone leaves out the rest.</p>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="other-dbs">Their database files</label>
+        <div class="row">
+          <input id="other-dbs" type="file" accept=".db" multiple />
+        </div>
+        <p class="hint">Pick each other machine's <code>invoices.db</code> — the copy in its
+          backup folder will do. They are read without being modified, and their invoices are
+          merged into this one workbook.</p>
+        <p class="hint" id="others-picked"></p>
+      </div>
+    </section>
+
     <p class="error" id="error" hidden></p>
 
     <div class="actions">

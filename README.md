@@ -230,6 +230,33 @@ it stays put. `gst.js` owns both the format and the length check; the setup
 and settings screens ask the main process for a sample rather than rebuilding
 the string themselves, so the sixteen-character rule lives in one place.
 
+Three letters is the ceiling — `SH1/2627/09/0001` is exactly sixteen — so the
+prefix inputs are capped at three rather than letting someone type a fourth
+and only find out on save.
+
+## More than one machine at an agency
+
+Each install keeps its own database and its own counter, and `invoice_no` is
+only UNIQUE *within* a database. Two machines sharing a series prefix will
+therefore both issue `SH/2627/09/0001` to different customers, and neither
+will notice.
+
+**Give every machine its own prefix** — `SH` on one, `SB` on the next. Rule
+46(b) allows multiple series. Both setup and settings say so on screen.
+
+Reports read the local database only, so a return filed from one machine
+covers that machine alone. The reports screen takes other machines' database
+files (their backup copy is fine — they are opened read-only and never
+migrated) and merges everything into one workbook. The register gains a
+**Machine** column, and any invoice number found on two machines lands on a
+**DUPLICATE NUMBERS** sheet placed first in the workbook, so it cannot be
+filed past unnoticed.
+
+Do **not** point two installs at one database file on a network share or in a
+synced Drive/OneDrive folder. SQLite's locking is unreliable over SMB, and
+sync clients copy the file mid-write and produce conflicted copies. Backing
+*up* to Drive is fine; running the live database there is not.
+
 ## Still to build
 
 Credit notes UI — the table and report sheet exist, the screen does not.
