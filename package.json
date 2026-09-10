@@ -6,7 +6,7 @@
   "scripts": {
     "start": "electron .",
     "test": "node tests/gst.test.js && node tests/repository.test.js && node tests/reports.test.js",
-    "dist": "electron-builder --win",
+    "dist": "electron-builder --win --publish always",
     "test:extract": "node tests/extract.test.js",
     "test:all": "npm test && npm run test:extract",
     "postinstall": "electron-rebuild -f -w better-sqlite3",

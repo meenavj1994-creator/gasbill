@@ -51,12 +51,18 @@ app checks for updates once on launch — `src/main/main.js`'s
 a banner appears on the billing screen with a "Restart to update" button.
 
 To cut a release: bump `version` in `package.json`, generate a GitHub
-personal access token with `public_repo` scope, then run
+personal access token with `public_repo` scope, then run (PowerShell)
+
+    $env:GH_TOKEN = "<token>"
+    npm run dist
+
+or (bash)
 
     GH_TOKEN=<token> npm run dist
 
-electron-builder publishes the installer and `latest.yml` straight to a new
-GitHub Release. Already-installed copies of the app pick it up next launch.
+`npm run dist` passes `--publish always`, so electron-builder publishes the
+installer and `latest.yml` straight to a new GitHub Release — not a draft.
+Already-installed copies of the app pick it up next launch.
 
 ## The two copies
 
