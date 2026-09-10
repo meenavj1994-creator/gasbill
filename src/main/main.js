@@ -1,6 +1,6 @@
 'use strict';
 
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const Database = require('better-sqlite3');
@@ -82,9 +82,11 @@ function createWindow() {
 }
 
 let pendingUpdateVersion = null;
+let updaterWired = false;
 
-function checkForUpdates() {
-  if (!app.isPackaged) return;
+function wireUpdater() {
+  if (updaterWired) return;
+  updaterWired = true;
   autoUpdater.autoDownload = true;
   autoUpdater.on('update-downloaded', function (info) {
     pendingUpdateVersion = info.version;
@@ -93,13 +95,94 @@ function checkForUpdates() {
   autoUpdater.on('error', function (err) {
     console.error('update check failed:', err.message);
   });
+}
+
+function checkForUpdates() {
+  if (!app.isPackaged) return;
+  wireUpdater();
   autoUpdater.checkForUpdates().catch(function (err) {
     console.error('update check failed:', err.message);
   });
 }
 
+async function checkForUpdatesInteractive() {
+  if (!app.isPackaged) {
+    dialog.showMessageBox(win, {
+      type: 'info',
+      message: 'Updates are only checked in the installed app.',
+      detail: 'This is a development build.',
+      buttons: ['OK']
+    });
+    return;
+  }
+
+  wireUpdater();
+  try {
+    const result = await autoUpdater.checkForUpdates();
+    const found = result && result.updateInfo ? result.updateInfo.version : null;
+
+    if (pendingUpdateVersion) {
+      dialog.showMessageBox(win, {
+        type: 'info',
+        message: 'Version ' + pendingUpdateVersion + ' is ready to install.',
+        detail: 'Use the "Restart to update" button on the billing screen.',
+        buttons: ['OK']
+      });
+    } else if (found && found !== app.getVersion()) {
+      dialog.showMessageBox(win, {
+        type: 'info',
+        message: 'Version ' + found + ' is downloading in the background.',
+        detail: 'A "Restart to update" banner appears once it is ready.',
+        buttons: ['OK']
+      });
+    } else {
+      dialog.showMessageBox(win, {
+        type: 'info',
+        message: 'GasBill is up to date.',
+        detail: 'Version ' + app.getVersion(),
+        buttons: ['OK']
+      });
+    }
+  } catch (err) {
+    dialog.showMessageBox(win, {
+      type: 'warning',
+      message: 'Could not check for updates.',
+      detail: err.message,
+      buttons: ['OK']
+    });
+  }
+}
+
+function showAbout() {
+  dialog.showMessageBox(win, {
+    type: 'info',
+    title: 'About GasBill',
+    message: 'GasBill ' + app.getVersion(),
+    detail: 'Offline GST tax invoicing for LPG distributors.',
+    buttons: ['OK']
+  });
+}
+
+function buildMenu() {
+  Menu.setApplicationMenu(Menu.buildFromTemplate([
+    {
+      label: 'File',
+      submenu: [{ role: 'quit', label: 'Exit' }]
+    },
+    {
+      label: 'Help',
+      submenu: [
+        { label: 'Check for updates…', click: checkForUpdatesInteractive },
+        { type: 'separator' },
+        { label: 'About GasBill', click: showAbout }
+      ]
+    }
+  ]));
+}
+
 app.whenReady().then(function () {
   openDatabase();
+  buildMenu();
   createWindow();
   checkForUpdates();
 });
