@@ -131,6 +131,10 @@ body::before { display: none !important; }
   font-family: Consolas, monospace;
   text-align: right;
 }
+/* Numeric headers align with their figures. `.doc-lines th` sets left for the
+   description and would otherwise outrank the column classes. */
+.doc-lines th.c-qty, .doc-lines th.c-basic, .doc-lines th.c-disc,
+.doc-lines th.c-tax, .doc-lines th.c-amt { text-align: right; }
 .doc-pct { font-size: 6.5pt; color: #555; margin-right: 3pt; font-family: "Segoe UI", sans-serif; }
 .doc-lines tfoot td {
   font-weight: 700;
