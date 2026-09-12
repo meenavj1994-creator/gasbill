@@ -168,12 +168,20 @@ the bottom of a tax invoice would be far worse than an extra page.
 A5 and 80mm modes revert to one copy per page.
 
 **Tax is carried in the line columns**, not in rows under the table:
-Description | Qty | Rate | Taxable | CGST | SGST | Total within the state, with a
-single IGST column across state lines. Each tax cell shows the rate in small
-type beside the amount, and a footer row totals every column. Rule 46 asks for
-taxable value, rate and amount of tax; the columns give all three per line,
-and the bottom block stays at three rows (Taxable, Total with GST, Round off)
-however many rates the invoice mixes — five when there is a discount.
+Description | Qty | Basic | CGST (%) | SGST (%) | Total within the state, with a
+single IGST column across state lines. Basic is the line amount before tax;
+when quantity is not one the unit rate appears in small type beside it, so
+there is no separate Rate column. Each tax cell shows the rate the same way.
+A footer row totals every column. Rule 46 asks for taxable value, rate and
+amount of tax; the columns give all three per line, and the bottom block
+stays at three rows (Basic, Total with GST, Round off) however many rates the
+invoice mixes.
+
+A **Discount** column exists only on invoices that carry one, and so do the
+"Less discount" and "Taxable value" rows below. Each line's tax is computed on
+Basic less that line's share, so without the column the 9% beside it would
+not reconcile to anything printed. A normal invoice has no discount column,
+no discount row and no "0.00" — nothing about discounts is visible at all.
 
 The layout was compacted so that both copies keep to one sheet with real
 headroom: invoice number and date sit at the right of the supplier row rather

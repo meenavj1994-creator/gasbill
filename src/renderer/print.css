@@ -111,17 +111,22 @@ body::before { display: none !important; }
 }
 .doc-lines td { padding: 2.5pt 4pt; vertical-align: top; }
 .doc-lines tbody tr:nth-child(even) td { background: #F0F0F0; }
-/* Tax is carried per line: Description | Qty | Rate | Taxable | CGST | SGST | Total
-   within the state, with a single IGST column across state lines. */
-.c-desc { width: 34%; }
+/* Tax is carried per line: Description | Qty | Basic | CGST (%) | SGST (%) | Total
+   within the state, a single IGST column across state lines, and a Discount
+   column that exists only on invoices carrying one. */
+.c-desc { width: 40%; }
 .c-qty { width: 6%; text-align: right; }
-.c-rate { width: 10%; text-align: right; }
-.c-taxable { width: 12%; text-align: right; }
-.c-tax { width: 13.5%; text-align: right; white-space: nowrap; }
-.c-amt { width: 11%; text-align: right; }
-.doc-lines-inter .c-desc { width: 40%; }
-.doc-lines-inter .c-tax { width: 15%; }
-.doc-lines td.c-qty, .doc-lines td.c-rate, .doc-lines td.c-taxable,
+.c-basic { width: 13%; text-align: right; white-space: nowrap; }
+.c-disc { width: 11%; text-align: right; }
+.c-tax { width: 14%; text-align: right; white-space: nowrap; }
+.c-amt { width: 13%; text-align: right; }
+.doc-lines-disc .c-desc { width: 31%; }
+.doc-lines-disc .c-basic { width: 12%; }
+.doc-lines-disc .c-tax { width: 13%; }
+.doc-lines-inter .c-desc { width: 48%; }
+.doc-lines-inter .c-tax { width: 16%; }
+.doc-lines-inter.doc-lines-disc .c-desc { width: 38%; }
+.doc-lines td.c-qty, .doc-lines td.c-basic, .doc-lines td.c-disc,
 .doc-lines td.c-tax, .doc-lines td.c-amt {
   font-family: Consolas, monospace;
   text-align: right;

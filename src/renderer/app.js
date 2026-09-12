@@ -587,11 +587,18 @@ async function renderPrintable(invoice) {
     /* Tax lives in the line columns — CGST and SGST (or IGST) per line with a
        totals footer — rather than as rows under the table. Rule 46 wants
        taxable value, rate and tax amount; the columns give all three per
-       line, and the bottom block stays four rows however many rates mix. */
+       line, and the bottom block stays short however many rates mix.
+
+       Basic is the line amount before tax. A Discount column exists only on
+       invoices that carry one: each line's tax is computed on Basic less its
+       share, so without the column the 9% beside it would not reconcile. */
     const intra = !(invoice.igst > 0);
-    const taxCols = intra ? [['cgst', 'CGST'], ['sgst', 'SGST']] : [['igst', 'IGST']];
+    const discount = Number(invoice.discount) || 0;
+    const hasDiscount = discount > 0;
+    const taxCols = intra ? [['cgst', 'CGST (%)'], ['sgst', 'SGST (%)']] : [['igst', 'IGST (%)']];
     const table = node.querySelector('.doc-lines');
     table.classList.add(intra ? 'doc-lines-intra' : 'doc-lines-inter');
+    if (hasDiscount) table.classList.add('doc-lines-disc');
 
     const cell = function (tag, cls, text) {
       const el = document.createElement(tag);
@@ -599,41 +606,53 @@ async function renderPrintable(invoice) {
       el.textContent = text;
       return el;
     };
+    const small = function (text) {
+      const span = document.createElement('span');
+      span.className = 'doc-pct';
+      span.textContent = text;
+      return span;
+    };
     const taxCell = function (rate, amount) {
       const td = cell('td', 'c-tax', '');
-      const pct = document.createElement('span');
-      pct.className = 'doc-pct';
-      pct.textContent = rate + '%';
-      td.append(pct, document.createTextNode(money(amount)));
+      td.append(small(rate + '%'), document.createTextNode(money(amount)));
       return td;
     };
 
     const headRow = document.createElement('tr');
     headRow.append(cell('th', 'c-desc', 'Description'), cell('th', 'c-qty', 'Qty'),
-      cell('th', 'c-rate', 'Rate'), cell('th', 'c-taxable', 'Taxable'));
+      cell('th', 'c-basic', 'Basic'));
+    if (hasDiscount) headRow.appendChild(cell('th', 'c-disc', 'Discount'));
     taxCols.forEach(function (col) { headRow.appendChild(cell('th', 'c-tax', col[1])); });
     headRow.appendChild(cell('th', 'c-amt', 'Total'));
     node.querySelector('[data-head]').appendChild(headRow);
 
-    const sums = { taxable: 0, cgst: 0, sgst: 0, igst: 0, amt: 0 };
+    const sums = { basic: 0, disc: 0, cgst: 0, sgst: 0, igst: 0, amt: 0 };
     const body = node.querySelector('[data-lines]');
     for (const line of invoice.lines) {
       const taxable = Number(line.line_total) || 0;
+      const lineDisc = Number(line.discount) || 0;
+      const basic = taxable + lineDisc;
       const tax = Number(line.tax_amount) || 0;
       const rate = Number(line.gst_rate) || 0;
+      const qty = Number(line.qty) || 0;
       const half = Math.round(tax * 50) / 100;
       const parts = intra
         ? { cgst: half, sgst: Math.round((tax - half) * 100) / 100, igst: 0 }
         : { cgst: 0, sgst: 0, igst: tax };
 
       const tr = document.createElement('tr');
-      tr.append(cell('td', 'c-desc', line.description), cell('td', 'c-qty', String(line.qty)),
-        cell('td', 'c-rate', money(line.rate)), cell('td', 'c-taxable', money(taxable)));
+      const basicCell = cell('td', 'c-basic', '');
+      // Unit rate only earns space when quantity is not one.
+      if (qty !== 1) basicCell.appendChild(small('@ ' + money(line.rate)));
+      basicCell.appendChild(document.createTextNode(money(basic)));
+      tr.append(cell('td', 'c-desc', line.description), cell('td', 'c-qty', String(line.qty)), basicCell);
+      if (hasDiscount) tr.appendChild(cell('td', 'c-disc', money(lineDisc)));
       taxCols.forEach(function (col) { tr.appendChild(taxCell(rate / taxCols.length, parts[col[0]])); });
       tr.appendChild(cell('td', 'c-amt', money(taxable + tax)));
       body.appendChild(tr);
 
-      sums.taxable += taxable;
+      sums.basic += basic;
+      sums.disc += lineDisc;
       sums.cgst += parts.cgst;
       sums.sgst += parts.sgst;
       sums.igst += parts.igst;
@@ -641,20 +660,19 @@ async function renderPrintable(invoice) {
     }
 
     const footRow = document.createElement('tr');
-    footRow.append(cell('td', 'c-desc', 'Total'), cell('td', 'c-qty', ''), cell('td', 'c-rate', ''),
-      cell('td', 'c-taxable', money(sums.taxable)));
+    footRow.append(cell('td', 'c-desc', 'Total'), cell('td', 'c-qty', ''),
+      cell('td', 'c-basic', money(sums.basic)));
+    if (hasDiscount) footRow.appendChild(cell('td', 'c-disc', money(sums.disc)));
     taxCols.forEach(function (col) { footRow.appendChild(cell('td', 'c-tax', money(sums[col[0]]))); });
     footRow.appendChild(cell('td', 'c-amt', money(sums.amt)));
     node.querySelector('[data-foot]').appendChild(footRow);
 
     const totalsBox = node.querySelector('[data-totals]');
-    const rows = [];
-    const discount = Number(invoice.discount) || 0;
-    if (discount > 0) {
-      rows.push(['Gross value', money(invoice.taxable_value + discount)]);
+    const rows = [['Basic', money(invoice.taxable_value + discount)]];
+    if (hasDiscount) {
       rows.push(['Less discount', money(discount)]);
+      rows.push(['Taxable value', money(invoice.taxable_value)]);
     }
-    rows.push(['Taxable value', money(invoice.taxable_value)]);
     rows.push(['Total with GST', money(invoice.taxable_value + invoice.cgst + invoice.sgst + invoice.igst)]);
     rows.push(['Round off', money(invoice.rounding)]);
 
