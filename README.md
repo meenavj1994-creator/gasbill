@@ -6,7 +6,7 @@ service charges. No server, no hosting, no internet needed to run.
 ## Running it
 
     npm install
-    npm test          # 45 fast tests
+    npm test          # 66 fast tests
     npm run test:all  # adds 3 OCR tests (~10s, needs eng.traineddata)
     npm start         # run the app
     npm run dist      # build the Windows NSIS installer
@@ -167,6 +167,18 @@ the bottom of a tax invoice would be far worse than an extra page.
 
 A5 and 80mm modes revert to one copy per page.
 
+The totals block floats right and the amount in words, thank-you line and
+acknowledgement box sit in the left column beside it rather than underneath.
+That is what keeps a two-rate invoice — six tax rows instead of four — inside
+the 134mm half. Stacked, both copies measured 145mm and the duplicate went to
+a second sheet.
+
+When lines carry more than one GST rate the line table gains a **GST** column
+showing each line's rate; with a single rate the column is left out because
+the totals block already states it. The screen's gradient wash is a
+`body::before`, which `body { background: #fff }` does not cover, so `print.css`
+hides it explicitly — printing runs with `printBackground` on.
+
 ## Theme
 
 Arctic Frost chrome with Botanical Garden signal colours:
@@ -205,7 +217,20 @@ The billing screen is a two-column layout on windows over 900px — charges left
 totals and actions in a sticky right rail — collapsing to one column below that.
 The printed invoice stays black on white regardless of the screen theme.
 
-## One trap worth knowing about
+## Traps worth knowing about
+
+**`File.path` does not exist.** Electron 32 removed it from the renderer, so
+every file input goes through `window.api.pathOf(file)`, which is
+`webUtils.getPathForFile` behind the preload bridge. Reading `.path` off a
+`File` gives `undefined` and the main process then fails with
+`The "path" argument must be of type string`, which is what a distributor
+actually saw on the setup screen.
+
+**pdf.js must be `import()`ed, not `require()`d.** It ships as an ES module
+only. The system's Node 22 will `require()` one, so `npm run test:extract`
+passed, while the Node 20 inside Electron 33 will not — every certificate
+upload in the real app threw. `extract.js` uses a dynamic `import()` for
+exactly this reason; do not "simplify" it back.
 
 `useSystemFonts` must stay `false` in `extract.js`. With it on, pdf.js finds no
 system fonts and renders every page blank white — no error, no warning, just an

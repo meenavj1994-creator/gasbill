@@ -111,7 +111,7 @@ $('prefix').addEventListener('input', previewNumber);
 
 $('logo-file').addEventListener('change', function (e) {
   const file = e.target.files[0];
-  if (file) setLogo(file.path);
+  if (file) setLogo(window.api.pathOf(file));
 });
 
 $('pick-backup').addEventListener('click', async function () {

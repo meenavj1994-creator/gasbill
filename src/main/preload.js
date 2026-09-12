@@ -1,6 +1,6 @@
 'use strict';
 
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 function call(channel) {
   return function () {
@@ -57,5 +57,8 @@ contextBridge.exposeInMainWorld('api', {
     },
     install: call('update:install')
   },
-  markDirty: function (isDirty) { ipcRenderer.send('app:dirty', isDirty); }
+  markDirty: function (isDirty) { ipcRenderer.send('app:dirty', isDirty); },
+  // Electron 32 removed File.path from the renderer; this is the only way
+  // left to turn a picked File into a path the main process can open.
+  pathOf: function (file) { return file ? webUtils.getPathForFile(file) : null; }
 });

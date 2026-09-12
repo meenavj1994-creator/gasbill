@@ -576,11 +576,21 @@ async function renderPrintable(invoice) {
       if (thanks) thanks.hidden = true;
     }
 
+    // A GST column only earns its space when the lines disagree on rate.
+    // With one rate the totals block already says it; with two or more the
+    // reader needs to see which line carries which.
+    const mixedRates = breakup.length > 1;
+    const gstHead = node.querySelector('[data-gst-head]');
+    if (gstHead) gstHead.hidden = !mixedRates;
+    if (mixedRates) node.querySelector('.doc-lines').classList.add('doc-lines-gst');
+
     const body = node.querySelector('[data-lines]');
     for (const line of invoice.lines) {
       const tr = document.createElement('tr');
-      [['c-desc', line.description],
-       ['c-qty', String(line.qty)], ['c-amt', money(line.line_total)]].forEach(function (pair) {
+      const cells = [['c-desc', line.description], ['c-qty', String(line.qty)]];
+      if (mixedRates) cells.push(['c-gst', (Number(line.gst_rate) || 0) + '%']);
+      cells.push(['c-amt', money(line.line_total)]);
+      cells.forEach(function (pair) {
         const td = document.createElement('td');
         td.className = pair[0];
         td.textContent = pair[1];

@@ -10,6 +10,18 @@ function installCanvasGlobals() {
   }
 }
 
+/* pdf.js 4 ships as an ES module only. Plain Node 22 will require() one,
+   but the Node inside Electron 33 (20.x) will not, so the tests passed while
+   the app itself threw on every certificate. Dynamic import() works in both. */
+let pdfjsModule = null;
+function loadPdfjs() {
+  if (!pdfjsModule) {
+    const { pathToFileURL } = require('url');
+    pdfjsModule = import(pathToFileURL(require.resolve('pdfjs-dist/legacy/build/pdf.mjs')).href);
+  }
+  return pdfjsModule;
+}
+
 function pdfjsAsset(name) {
   return path.join(path.dirname(require.resolve('pdfjs-dist/package.json')), name) + path.sep;
 }
@@ -25,7 +37,7 @@ function documentOptions(data) {
 }
 
 async function pdfTextLayer(filePath) {
-  const pdfjs = require('pdfjs-dist/legacy/build/pdf.mjs');
+  const pdfjs = await loadPdfjs();
   const data = new Uint8Array(fs.readFileSync(filePath));
   const doc = await pdfjs.getDocument(documentOptions(data)).promise;
 
@@ -55,7 +67,7 @@ async function pdfTextLayer(filePath) {
 
 async function rasterisePdf(filePath, dpi) {
   installCanvasGlobals();
-  const pdfjs = require('pdfjs-dist/legacy/build/pdf.mjs');
+  const pdfjs = await loadPdfjs();
   const { createCanvas } = require('@napi-rs/canvas');
 
   const data = new Uint8Array(fs.readFileSync(filePath));

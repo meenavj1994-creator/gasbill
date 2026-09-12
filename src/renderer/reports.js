@@ -42,7 +42,7 @@ describe();
 let otherDbs = [];
 
 $('other-dbs').addEventListener('change', function (e) {
-  otherDbs = Array.prototype.slice.call(e.target.files).map(function (f) { return f.path; });
+  otherDbs = Array.prototype.slice.call(e.target.files).map(function (f) { return window.api.pathOf(f); });
   $('others-picked').textContent = otherDbs.length
     ? otherDbs.length + ' other machine' + (otherDbs.length > 1 ? 's' : '') + ' will be merged in.'
     : '';

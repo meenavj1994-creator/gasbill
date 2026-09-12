@@ -1,6 +1,9 @@
 @page { size: A4 portrait; margin: 9mm; }
 
 body { background: #fff; }
+/* The screen's fixed gradient wash is a ::before, which body's white
+   background does not cover, and printing runs with printBackground on. */
+body::before { display: none !important; }
 .app, .bar, .notice, .toast { display: none !important; }
 .print-only { display: block !important; }
 
@@ -95,12 +98,18 @@ body { background: #fff; }
 .c-desc { width: 64%; }
 .c-qty { width: 12%; text-align: right; }
 .c-amt { width: 24%; text-align: right; }
-.doc-lines td.c-qty, .doc-lines td.c-amt {
+/* Mixed-rate invoices gain a GST column; the description gives up the room. */
+.doc-lines-gst .c-desc { width: 52%; }
+.c-gst { width: 12%; text-align: right; }
+.doc-lines td.c-qty, .doc-lines td.c-gst, .doc-lines td.c-amt {
   font-family: Consolas, monospace;
   text-align: right;
 }
 
-.doc-totals { font-size: 8pt; margin-left: 52%; margin-top: 4pt; }
+/* Totals float right; words, thanks and the acknowledgement fill the left
+   column beside them instead of stacking underneath. A two-rate invoice
+   carries six tax rows, and stacked it no longer fit two copies on a sheet. */
+.doc-totals { font-size: 8pt; float: right; width: 48%; margin-top: 4pt; }
 .doc-total-row { display: flex; justify-content: space-between; padding: 1pt 2pt; }
 .doc-total-row span:last-child { font-family: Consolas, monospace; }
 .doc-total-final {
@@ -112,16 +121,18 @@ body { background: #fff; }
   font-size: 9.5pt;
 }
 
-.doc-words { font-size: 7.5pt; font-style: italic; border-top: 0.5pt solid #000; padding-top: 3pt; margin-top: 4pt; }
+.doc-words { width: 48%; font-size: 7.5pt; font-style: italic; border-top: 0.5pt solid #000; padding-top: 3pt; margin-top: 4pt; }
 
 .doc-thanks {
+  width: 48%;
   font-size: 8pt;
   font-weight: 600;
-  text-align: right;
   margin-top: 5pt;
 }
 
 .doc-ack {
+  width: 48%;
+  box-sizing: border-box;
   border: 0.75pt solid #000;
   padding: 3pt 5pt;
   margin-top: 4pt;
@@ -129,7 +140,7 @@ body { background: #fff; }
   line-height: 1.35;
 }
 
-.doc-signs { display: flex; gap: 14pt; margin-top: 6pt; }
+.doc-signs { clear: both; display: flex; gap: 14pt; margin-top: 6pt; }
 .doc-sign-block { flex: 1; }
 .doc-sign-rule { height: 16pt; border-bottom: 0.5pt solid #000; margin-bottom: 2pt; }
 .doc-sign-label { font-size: 7.5pt; font-weight: 600; }

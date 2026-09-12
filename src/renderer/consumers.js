@@ -37,7 +37,7 @@ $('file').addEventListener('change', async function (e) {
   $('result').hidden = true;
 
   try {
-    parsed = await unwrap(window.api.consumers.parseFile(file.path));
+    parsed = await unwrap(window.api.consumers.parseFile(window.api.pathOf(file)));
   } catch (err) {
     $('file-info').textContent = 'Could not read the file: ' + err.message;
     $('file-info').className = 'hint bad';

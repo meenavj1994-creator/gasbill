@@ -28,7 +28,7 @@ function setLogo(path) {
 
 $('logo-file').addEventListener('change', function (e) {
   const file = e.target.files[0];
-  if (file) setLogo(file.path);
+  if (file) setLogo(window.api.pathOf(file));
 });
 
 $('cert-file').addEventListener('change', async function (e) {
@@ -39,7 +39,7 @@ $('cert-file').addEventListener('change', async function (e) {
   out.className = 'hint';
 
   try {
-    const parsed = await unwrap(window.api.certificate.read(file.path, STATE_CODE));
+    const parsed = await unwrap(window.api.certificate.read(window.api.pathOf(file), STATE_CODE));
     if (!parsed.ok) {
       out.textContent = parsed.reason;
       out.className = 'hint bad';
@@ -161,7 +161,7 @@ $('finish').addEventListener('click', async function () {
     state_code: STATE_CODE,
     phone: $('phone').value.trim() || null,
     logo_path: logoPath,
-    certificate_path: $('cert-file').files[0] ? $('cert-file').files[0].path : null,
+    certificate_path: window.api.pathOf($('cert-file').files[0]),
     series_prefix: $('prefix').value.trim().toUpperCase() ||
       await unwrap(window.api.gst.seriesPrefix($('trade-name').value)),
     ack_text: $('ack').value.trim() || null,
