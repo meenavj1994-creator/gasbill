@@ -6,7 +6,7 @@ service charges. No server, no hosting, no internet needed to run.
 ## Running it
 
     npm install
-    npm test          # 75 fast tests
+    npm test          # 78 fast tests
     npm run test:all  # adds 3 OCR tests (~10s, needs eng.traineddata)
     npm start         # run the app
     npm run dist      # build the Windows NSIS installer
@@ -137,7 +137,8 @@ draft recovery. Whatever was on screen is gone on next launch.
 - `src/main/migrations.js` — versioned schema, runs on launch.
 - `src/main/repository.js` — transactional numbering, charge versioning,
   consumer upsert.
-- `src/main/certificate.js` — REG-06 field extraction, checksum-gated.
+- `src/main/certificate.js` — REG-06 field extraction, checksum-gated, with
+  shape-based repair of OCR confusions (see Scanned certificates).
 - `src/main/extract.js` — pdf.js text layer first, Tesseract OCR fallback at
   300 DPI.
 - `src/main/reports.js` — six report sheets.
@@ -234,6 +235,32 @@ frozen animation costs a few pixels of offset instead of the entire UI.
 The billing screen is a two-column layout on windows over 900px — charges left,
 totals and actions in a sticky right rail — collapsing to one column below that.
 The printed invoice stays black on white regardless of the screen theme.
+
+## Scanned certificates
+
+Setup accepts the portal's PDF, a scanned PDF, or a photo (JPG/PNG). A PDF is
+tried for a text layer first; anything without one is rasterised at 300 DPI
+and read by Tesseract, offline, using the bundled `eng.traineddata`. A phone
+photo of a REG-06 reads in one to three seconds.
+
+OCR's classic slips — Z read as 7, O as 0, B as 8, a space dropped into the
+middle of the number — are corrected by *shape*, not guesswork. A GSTIN is
+two digits, five letters, four digits, a letter, an entity character, the
+letter Z, a check character. `repairGstin` maps confusable characters in
+every position whose class is fixed, forces the Z, and leaves the entity and
+check characters exactly as read. The check digit then has to pass as usual;
+repairing it until it did would prove nothing. Tokens are compared with
+internal spaces removed, so `1234F 178` and `1234F178` are the same
+candidate.
+
+When the GSTIN still cannot be read, the names and address that *were* read
+are filled in anyway and the cursor goes to the GSTIN field — a scan that
+loses one character should not cost the user the other four fields.
+
+All three inputs are verified against the packaged build, not just
+`npm start`: the trained data and pdf.js both live inside `app.asar` and
+both are read from a worker thread, which is exactly the kind of thing that
+works in development and not in an installer.
 
 ## Traps worth knowing about
 

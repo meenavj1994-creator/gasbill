@@ -40,11 +40,9 @@ $('cert-file').addEventListener('change', async function (e) {
 
   try {
     const parsed = await unwrap(window.api.certificate.read(window.api.pathOf(file), STATE_CODE));
-    if (!parsed.ok) {
-      out.textContent = parsed.reason;
-      out.className = 'hint bad';
-      return;
-    }
+
+    // A scan that lost the GSTIN usually kept the names and address. Fill
+    // those rather than discarding them, and send the cursor to the GSTIN.
     if (parsed.fields.gstin) $('gstin').value = parsed.fields.gstin;
     if (parsed.fields.trade_name) {
       $('trade-name').value = parsed.fields.trade_name;
@@ -52,6 +50,13 @@ $('cert-file').addEventListener('change', async function (e) {
     }
     if (parsed.fields.legal_name) $('legal-name').value = parsed.fields.legal_name;
     if (parsed.fields.address) $('address').value = parsed.fields.address;
+
+    if (!parsed.ok) {
+      out.textContent = parsed.reason;
+      out.className = parsed.partial ? 'hint' : 'hint bad';
+      if (parsed.partial) $('gstin').focus();
+      return;
+    }
 
     out.textContent = parsed.missing.length
       ? 'Read from the certificate. Could not find: ' + parsed.missing.join(', ') + '. Check every field, especially the GSTIN.'

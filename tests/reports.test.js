@@ -57,7 +57,36 @@ test('rejects a GSTIN whose check digit was misread', function () {
   const broken = REG06.replace(GOOD, GOOD.slice(0, 14) + (GOOD[14] === 'A' ? 'B' : 'A'));
   const r = cert.parseCertificate(broken, { expectedStateCode: '23' });
   assert.strictEqual(r.ok, false);
-  assert.ok(/check digit/.test(r.reason));
+  assert.ok(/could not be read reliably/.test(r.reason));
+});
+
+test('repairs the OCR confusions a scan actually produced', function () {
+  // Verbatim from Tesseract on a 200dpi JPEG of the fixture: Z read as 7,
+  // and a space dropped in before the last three characters.
+  const scanned = REG06.replace(GOOD, '23ABCDE1234F 178');
+  const r = cert.parseCertificate(scanned, { expectedStateCode: '23' });
+  assert.strictEqual(r.ok, true, r.reason || '');
+  assert.strictEqual(r.fields.gstin, GOOD);
+});
+
+test('repairs class-fixed positions only, never the check character', function () {
+  assert.strictEqual(cert.repairGstin('23ABCDE1234F178'), '23ABCDE1234F1Z8');
+  assert.strictEqual(cert.repairGstin('Z3ABCDE1Z34F1Z8'), '23ABCDE1234F1Z8');
+  assert.strictEqual(cert.repairGstin('23A8CDE1234F1Z8'), '23ABCDE1234F1Z8');
+  // The check character is left as read, so a wrong one still fails.
+  const wrongCheck = GOOD.slice(0, 14) + (GOOD[14] === 'A' ? 'B' : 'A');
+  assert.strictEqual(cert.repairGstin(wrongCheck), wrongCheck);
+  assert.strictEqual(cert.parseCertificate(REG06.replace(GOOD, wrongCheck), { expectedStateCode: '23' }).ok, false);
+  assert.strictEqual(cert.repairGstin('TOO-SHORT'), null);
+});
+
+test('still returns the names and address when the GSTIN is unreadable', function () {
+  const broken = REG06.replace(GOOD, 'XXXXXXXXXXXXXXX');
+  const r = cert.parseCertificate(broken, { expectedStateCode: '23' });
+  assert.strictEqual(r.ok, false);
+  assert.strictEqual(r.partial, true);
+  assert.strictEqual(r.fields.trade_name, 'Shree Balaji Gas Agency');
+  assert.ok(/type the GSTIN/i.test(r.reason));
 });
 
 test('skips a GSTIN from the wrong state and reports failure', function () {
