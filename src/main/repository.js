@@ -138,23 +138,24 @@ function createRepository(db) {
     db.prepare('UPDATE invoice_counters SET next_value = next_value + 1 WHERE period_key = ?').run(period);
 
     const posCode = payload.place_of_supply_code || d.state_code;
-    const computed = gst.computeInvoice(payload.lines, d.state_code, posCode);
+    const computed = gst.computeInvoice(payload.lines, d.state_code, posCode, payload.discount);
 
     const info = db.prepare(`INSERT INTO invoices (invoice_no, fy_label, invoice_date, consumer_no,
       customer_name, customer_address, customer_gstin, place_of_supply, place_of_supply_code,
-      reverse_charge, taxable_value, cgst, sgst, igst, rounding, total, amount_in_words, status, created_at)
+      reverse_charge, discount, taxable_value, cgst, sgst, igst, rounding, total, amount_in_words, status, created_at)
       VALUES (@invoice_no, @fy_label, @invoice_date, @consumer_no, @customer_name, @customer_address,
-      @customer_gstin, @place_of_supply, @place_of_supply_code, 0, @taxable_value, @cgst, @sgst,
+      @customer_gstin, @place_of_supply, @place_of_supply_code, 0, @discount, @taxable_value, @cgst, @sgst,
       @igst, @rounding, @total, @amount_in_words, 'issued', @created_at)`).run({
       invoice_no: invoiceNo,
       fy_label: fy.label,
-      invoice_date: date.toISOString().slice(0, 10),
+      invoice_date: gst.localDate(date),
       consumer_no: payload.consumer_no || null,
       customer_name: payload.customer_name,
       customer_address: payload.customer_address || null,
       customer_gstin: payload.customer_gstin || null,
       place_of_supply: payload.place_of_supply || 'Madhya Pradesh',
       place_of_supply_code: posCode,
+      discount: computed.discount,
       taxable_value: computed.taxable,
       cgst: computed.cgst,
       sgst: computed.sgst,
@@ -166,12 +167,12 @@ function createRepository(db) {
     });
 
     const lineStmt = db.prepare(`INSERT INTO invoice_lines (invoice_id, description,
-      qty, rate, gst_rate, line_total, tax_amount)
-      VALUES (?, ?, ?, ?, ?, ?, ?)`);
+      qty, rate, gst_rate, discount, line_total, tax_amount)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`);
 
     for (const line of computed.lines) {
       lineStmt.run(info.lastInsertRowid, line.description,
-        line.qty, line.rate, line.gstRate, line.lineTotal, line.taxAmount);
+        line.qty, line.rate, line.gstRate, line.discount, line.lineTotal, line.taxAmount);
     }
 
     return getInvoice(info.lastInsertRowid);

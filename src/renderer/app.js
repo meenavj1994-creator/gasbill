@@ -263,6 +263,7 @@ function wire() {
     $('gstin-result').className = 'hint';
   });
 
+  $('t-discount').addEventListener('input', function () { recalc(); });
   $('save').addEventListener('click', function () { submit(false); });
   $('save-print').addEventListener('click', function () { submit(true); });
 
@@ -427,9 +428,15 @@ function renderTaxRows(byRate, intraState) {
   }
 }
 
+function discountValue() {
+  const n = Number($('t-discount').value);
+  return n > 0 ? n : 0;
+}
+
 async function recalc() {
   if (lines.length === 0) {
     totals = null;
+    $('t-gross').textContent = '0.00';
     $('t-taxable').textContent = '0.00';
     $('t-rounding').textContent = '0.00';
     renderTaxRows([], true);
@@ -438,7 +445,8 @@ async function recalc() {
     return;
   }
 
-  totals = await unwrap(window.api.compute(lines, distributor.state_code, distributor.state_code));
+  totals = await unwrap(window.api.compute(lines, distributor.state_code, distributor.state_code, discountValue()));
+  $('t-gross').textContent = money(totals.gross);
   $('t-taxable').textContent = money(totals.taxable);
   renderTaxRows(totals.byRate, totals.intraState);
   $('t-rounding').textContent = (totals.rounding >= 0 ? '+' : '') + money(totals.rounding);
@@ -511,6 +519,7 @@ async function submit(thenPrint) {
       place_of_supply: 'Madhya Pradesh',
       place_of_supply_code: distributor.state_code,
       invoice_date: new Date().toISOString(),
+      discount: discountValue(),
       lines: lines
     }));
   } catch (err) {
@@ -534,7 +543,6 @@ async function submit(thenPrint) {
 async function renderPrintable(invoice) {
   const area = $('print-area');
   area.innerHTML = '';
-  const breakup = await unwrap(window.api.taxBreakup(invoice.lines, !(invoice.igst > 0)));
 
   ['Original for recipient', 'Duplicate for supplier'].forEach(function (copyLabel) {
     const node = $('invoice-template').content.cloneNode(true);
@@ -576,40 +584,79 @@ async function renderPrintable(invoice) {
       if (thanks) thanks.hidden = true;
     }
 
-    // A GST column only earns its space when the lines disagree on rate.
-    // With one rate the totals block already says it; with two or more the
-    // reader needs to see which line carries which.
-    const mixedRates = breakup.length > 1;
-    const gstHead = node.querySelector('[data-gst-head]');
-    if (gstHead) gstHead.hidden = !mixedRates;
-    if (mixedRates) node.querySelector('.doc-lines').classList.add('doc-lines-gst');
+    /* Tax lives in the line columns — CGST and SGST (or IGST) per line with a
+       totals footer — rather than as rows under the table. Rule 46 wants
+       taxable value, rate and tax amount; the columns give all three per
+       line, and the bottom block stays four rows however many rates mix. */
+    const intra = !(invoice.igst > 0);
+    const taxCols = intra ? [['cgst', 'CGST'], ['sgst', 'SGST']] : [['igst', 'IGST']];
+    const table = node.querySelector('.doc-lines');
+    table.classList.add(intra ? 'doc-lines-intra' : 'doc-lines-inter');
 
+    const cell = function (tag, cls, text) {
+      const el = document.createElement(tag);
+      el.className = cls;
+      el.textContent = text;
+      return el;
+    };
+    const taxCell = function (rate, amount) {
+      const td = cell('td', 'c-tax', '');
+      const pct = document.createElement('span');
+      pct.className = 'doc-pct';
+      pct.textContent = rate + '%';
+      td.append(pct, document.createTextNode(money(amount)));
+      return td;
+    };
+
+    const headRow = document.createElement('tr');
+    headRow.append(cell('th', 'c-desc', 'Description'), cell('th', 'c-qty', 'Qty'),
+      cell('th', 'c-rate', 'Rate'), cell('th', 'c-taxable', 'Taxable'));
+    taxCols.forEach(function (col) { headRow.appendChild(cell('th', 'c-tax', col[1])); });
+    headRow.appendChild(cell('th', 'c-amt', 'Total'));
+    node.querySelector('[data-head]').appendChild(headRow);
+
+    const sums = { taxable: 0, cgst: 0, sgst: 0, igst: 0, amt: 0 };
     const body = node.querySelector('[data-lines]');
     for (const line of invoice.lines) {
+      const taxable = Number(line.line_total) || 0;
+      const tax = Number(line.tax_amount) || 0;
+      const rate = Number(line.gst_rate) || 0;
+      const half = Math.round(tax * 50) / 100;
+      const parts = intra
+        ? { cgst: half, sgst: Math.round((tax - half) * 100) / 100, igst: 0 }
+        : { cgst: 0, sgst: 0, igst: tax };
+
       const tr = document.createElement('tr');
-      const cells = [['c-desc', line.description], ['c-qty', String(line.qty)]];
-      if (mixedRates) cells.push(['c-gst', (Number(line.gst_rate) || 0) + '%']);
-      cells.push(['c-amt', money(line.line_total)]);
-      cells.forEach(function (pair) {
-        const td = document.createElement('td');
-        td.className = pair[0];
-        td.textContent = pair[1];
-        tr.appendChild(td);
-      });
+      tr.append(cell('td', 'c-desc', line.description), cell('td', 'c-qty', String(line.qty)),
+        cell('td', 'c-rate', money(line.rate)), cell('td', 'c-taxable', money(taxable)));
+      taxCols.forEach(function (col) { tr.appendChild(taxCell(rate / taxCols.length, parts[col[0]])); });
+      tr.appendChild(cell('td', 'c-amt', money(taxable + tax)));
       body.appendChild(tr);
+
+      sums.taxable += taxable;
+      sums.cgst += parts.cgst;
+      sums.sgst += parts.sgst;
+      sums.igst += parts.igst;
+      sums.amt += taxable + tax;
     }
 
+    const footRow = document.createElement('tr');
+    footRow.append(cell('td', 'c-desc', 'Total'), cell('td', 'c-qty', ''), cell('td', 'c-rate', ''),
+      cell('td', 'c-taxable', money(sums.taxable)));
+    taxCols.forEach(function (col) { footRow.appendChild(cell('td', 'c-tax', money(sums[col[0]]))); });
+    footRow.appendChild(cell('td', 'c-amt', money(sums.amt)));
+    node.querySelector('[data-foot]').appendChild(footRow);
+
     const totalsBox = node.querySelector('[data-totals]');
-    const rows = [['Taxable value', money(invoice.taxable_value)]];
-    for (const bucket of breakup) {
-      if (invoice.igst > 0) {
-        rows.push(['IGST @ ' + bucket.rate + '%', money(bucket.igst)]);
-      } else {
-        rows.push(['CGST @ ' + (bucket.rate / 2) + '%', money(bucket.cgst)]);
-        rows.push(['SGST @ ' + (bucket.rate / 2) + '%', money(bucket.sgst)]);
-      }
+    const rows = [];
+    const discount = Number(invoice.discount) || 0;
+    if (discount > 0) {
+      rows.push(['Gross value', money(invoice.taxable_value + discount)]);
+      rows.push(['Less discount', money(discount)]);
     }
-    rows.push(['Rounding', money(invoice.rounding)]);
+    rows.push(['Taxable value', money(invoice.taxable_value)]);
+    rows.push(['Total with GST', money(invoice.taxable_value + invoice.cgst + invoice.sgst + invoice.igst)]);
+    rows.push(['Round off', money(invoice.rounding)]);
 
     rows.forEach(function (pair) {
       const div = document.createElement('div');
@@ -633,7 +680,7 @@ async function renderPrintable(invoice) {
 
 async function reset() {
   lines = [];
-  ['consumer-no', 'customer-name', 'customer-address', 'customer-gstin']
+  ['consumer-no', 'customer-name', 'customer-address', 'customer-gstin', 't-discount']
     .forEach(function (id) { $(id).value = ''; });
   $('customer-card').hidden = true;
   $('customer-fields').hidden = true;

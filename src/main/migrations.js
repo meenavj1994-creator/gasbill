@@ -165,6 +165,18 @@ const migrations = [
         CREATE INDEX idx_bundle_items_bundle ON bundle_items (bundle_id);
       `);
     }
+  },
+  {
+    version: 6,
+    name: 'invoice discount',
+    up: function (db) {
+      // line_total keeps meaning "taxable value of the line", so every report
+      // that reads it stays right. The discount is stored alongside: on the
+      // invoice as the figure the operator typed, on each line as its share,
+      // so gross (line_total + discount) can always be rebuilt for the print.
+      db.exec('ALTER TABLE invoices ADD COLUMN discount REAL NOT NULL DEFAULT 0');
+      db.exec('ALTER TABLE invoice_lines ADD COLUMN discount REAL NOT NULL DEFAULT 0');
+    }
   }
 ];
 

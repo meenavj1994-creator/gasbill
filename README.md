@@ -6,7 +6,7 @@ service charges. No server, no hosting, no internet needed to run.
 ## Running it
 
     npm install
-    npm test          # 66 fast tests
+    npm test          # 75 fast tests
     npm run test:all  # adds 3 OCR tests (~10s, needs eng.traineddata)
     npm start         # run the app
     npm run dist      # build the Windows NSIS installer
@@ -167,17 +167,27 @@ the bottom of a tax invoice would be far worse than an extra page.
 
 A5 and 80mm modes revert to one copy per page.
 
-The totals block floats right and the amount in words, thank-you line and
-acknowledgement box sit in the left column beside it rather than underneath.
-That is what keeps a two-rate invoice — six tax rows instead of four — inside
-the 134mm half. Stacked, both copies measured 145mm and the duplicate went to
-a second sheet.
+**Tax is carried in the line columns**, not in rows under the table:
+Description | Qty | Rate | Taxable | CGST | SGST | Total within the state, with a
+single IGST column across state lines. Each tax cell shows the rate in small
+type beside the amount, and a footer row totals every column. Rule 46 asks for
+taxable value, rate and amount of tax; the columns give all three per line,
+and the bottom block stays at three rows (Taxable, Total with GST, Round off)
+however many rates the invoice mixes — five when there is a discount.
 
-When lines carry more than one GST rate the line table gains a **GST** column
-showing each line's rate; with a single rate the column is left out because
-the totals block already states it. The screen's gradient wash is a
-`body::before`, which `body { background: #fff }` does not cover, so `print.css`
-hides it explicitly — printing runs with `printBackground` on.
+The layout was compacted so that both copies keep to one sheet with real
+headroom: invoice number and date sit at the right of the supplier row rather
+than in a strip of their own, recipient and place-of-supply sit side by side,
+the totals float right beside the words and acknowledgement, and the signature
+block is pinned to the bottom of each half (`.doc` is a flex column,
+`margin-top: auto` on the signatures) so the cut line lands in the same place
+on every invoice. Measured under print media: **seven lines with a discount,
+eight without**, before the second copy spills to a second sheet. Anything
+longer does spill rather than clip — see above.
+
+The screen's gradient wash is a `body::before`, which `body { background: #fff }`
+does not cover, so `print.css` hides it explicitly — printing runs with
+`printBackground` on.
 
 ## Theme
 
@@ -225,6 +235,10 @@ every file input goes through `window.api.pathOf(file)`, which is
 `File` gives `undefined` and the main process then fails with
 `The "path" argument must be of type string`, which is what a distributor
 actually saw on the setup screen.
+
+**Invoice dates come from `gst.localDate`, never `toISOString().slice(0, 10)`.**
+The latter gives the UTC date, which in India is yesterday until 05:30 every
+morning. The reports had this bug twice; the invoice date had it too.
 
 **pdf.js must be `import()`ed, not `require()`d.** It ships as an ES module
 only. The system's Node 22 will `require()` one, so `npm run test:extract`
@@ -278,14 +292,29 @@ rather than silently dropped.
 applies depends on whether the connection is PMUY, and that is not a call this
 app should make. Edit the set to match how the territory actually bills.
 
-**GST rate is per item, and the tax lines follow it.** They used to read
-`CGST @ 9%` as literal text in both the totals panel and the printed invoice,
-which would have quietly printed the wrong rate on a tax document the moment
-anything was not 18%. Both now render one row per rate — an invoice carrying an
-18% hose and a 28% hot plate shows CGST/SGST at 9% and at 14% separately, which
-is the rate-wise breakup GST wants anyway. Nothing stores the breakup, so the
-printed copy rebuilds it from the saved lines, and a test asserts the rebuilt
-one matches what was computed at save time.
+**GST rate is per item, and the tax follows it.** The screen's totals panel
+shows one CGST/SGST row per rate; the printed invoice carries the tax in the
+line columns instead (see Printing). Either way an 18% hose and a 28% hot
+plate on one invoice are taxed at their own rates and shown that way — the
+old literal `CGST @ 9%` text would have printed the wrong rate on a tax
+document the moment anything was not 18%.
+
+## Discount
+
+The billing screen takes one invoice-level discount in rupees. It is applied
+to the value **before tax** and pushed down into each line in proportion to
+the line's gross value (`gst.apportionDiscount`, last line takes the paise
+remainder so the shares always add up exactly), and tax is then computed on
+the discounted taxable value. That order is not a preference: Section 15(3)
+only excludes a discount from taxable value when it is recorded on the invoice
+against the supply. A discount knocked off the grand total *after* tax would
+leave the agency paying GST on money it never collected.
+
+Storage keeps `invoice_lines.line_total` meaning "taxable value of the line",
+which is what every report already reads, so the reports needed no change.
+The discount is stored beside it — `invoices.discount` as typed, and
+`invoice_lines.discount` as each line's share — so gross can be rebuilt for
+the print. Migration v6 adds both columns with a default of zero.
 
 ## More than one machine at an agency
 

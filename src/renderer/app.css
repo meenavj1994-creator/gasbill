@@ -353,6 +353,20 @@ button.blue:hover { background: var(--blue-dark); border-color: var(--blue-dark)
 }
 .total-row { display: flex; justify-content: space-between; padding: 3px 0; font-size: 13px; opacity: 0.88; }
 .total-row span:last-child { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.total-row-input { align-items: center; }
+.total-row-input input {
+  width: 7.5em;
+  min-height: 32px;
+  padding: 2px 8px;
+  text-align: right;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  background: rgba(255,255,255,0.14);
+  border-color: rgba(255,255,255,0.35);
+  color: #fff;
+}
+.total-row-input input::placeholder { color: rgba(255,255,255,0.55); }
+.total-row-input input:focus { background: #fff; color: var(--charcoal); }
 .total-row-final {
   margin-top: 11px;
   padding-top: 12px;

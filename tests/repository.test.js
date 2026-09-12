@@ -359,4 +359,31 @@ test('migration adds ack_text to an existing v1 database', function () {
   assert.ok(row.ack_text, 'existing row did not get the default acknowledgement');
 });
 
+console.log('\nDiscount and dates');
+
+test('stores the discount on the invoice and its share on each line', function () {
+  const { repo } = freshRepo();
+  const inv = repo.saveInvoice(customer({ invoice_date: '2026-09-03', discount: 50 }));
+  assert.strictEqual(inv.discount, 50);
+  const shares = inv.lines.reduce(function (a, l) { return a + l.discount; }, 0);
+  assert.strictEqual(Math.round(shares * 100) / 100, 50);
+  const taxable = inv.lines.reduce(function (a, l) { return a + l.line_total; }, 0);
+  assert.strictEqual(Math.round(taxable * 100) / 100, inv.taxable_value);
+});
+
+test('an invoice without a discount stores zero', function () {
+  const { repo } = freshRepo();
+  const inv = repo.saveInvoice(customer({ invoice_date: '2026-09-03' }));
+  assert.strictEqual(inv.discount, 0);
+  inv.lines.forEach(function (l) { assert.strictEqual(l.discount, 0); });
+});
+
+test('dates the invoice by the local calendar, even just after midnight', function () {
+  const { repo } = freshRepo();
+  // 00:30 local. East of UTC, toISOString() would say the day before.
+  const local = new Date(2026, 8, 15, 0, 30);
+  const inv = repo.saveInvoice(customer({ invoice_date: local.toISOString() }));
+  assert.strictEqual(inv.invoice_date, '2026-09-15');
+});
+
 console.log('\n' + passed + ' passed\n');

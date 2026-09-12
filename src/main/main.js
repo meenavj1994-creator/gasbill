@@ -243,8 +243,8 @@ handle('invoice:get', function (id) { return repo.getInvoice(id); });
 handle('invoice:between', function (from, to) { return repo.invoicesBetween(from, to); });
 
 handle('gstin:validate', function (value, stateCode) { return gst.validateGstin(value, stateCode); });
-handle('compute', function (lines, supplierState, posCode) {
-  return gst.computeInvoice(lines, supplierState, posCode);
+handle('compute', function (lines, supplierState, posCode, discount) {
+  return gst.computeInvoice(lines, supplierState, posCode, discount);
 });
 handle('taxBreakup', function (lines, intraState) {
   return gst.taxBreakupFromLines(lines, intraState);

@@ -185,4 +185,61 @@ test('includes paise when present', function () {
   assert.ok(/fifty paise/.test(g.amountInWords(177.5)));
 });
 
+console.log('\nDiscount');
+
+test('is taken off the taxable value before tax, not after', function () {
+  const r = g.computeInvoice([{ qty: 1, rate: 1000, gstRate: 18 }], '23', '23', 100);
+  assert.strictEqual(r.gross, 1000);
+  assert.strictEqual(r.discount, 100);
+  assert.strictEqual(r.taxable, 900);
+  assert.strictEqual(r.cgst, 81);
+  assert.strictEqual(r.sgst, 81);
+  assert.strictEqual(r.total, 1062);
+});
+
+test('is apportioned across lines by gross value and sums exactly', function () {
+  const r = g.computeInvoice([
+    { qty: 1, rate: 200, gstRate: 18 },
+    { qty: 1, rate: 2500, gstRate: 28 },
+    { qty: 3, rate: 33.33, gstRate: 18 }
+  ], '23', '23', 250);
+  const shares = r.lines.map(function (l) { return l.discount; });
+  const sum = shares.reduce(function (a, b) { return g.round2(a + b); }, 0);
+  assert.strictEqual(sum, 250);
+  assert.ok(shares[1] > shares[0] && shares[0] > shares[2], 'shares should follow gross value ' + shares);
+  r.lines.forEach(function (l) {
+    assert.strictEqual(l.lineTotal, g.round2(l.gross - l.discount));
+    assert.strictEqual(l.taxAmount, g.round2(l.lineTotal * l.gstRate / 100));
+  });
+});
+
+test('apportionDiscount gives the remainder to the last line', function () {
+  const shares = g.apportionDiscount([10, 10, 10], 10);
+  assert.deepStrictEqual(shares, [3.33, 3.33, 3.34]);
+});
+
+test('is clamped to the gross value and never negative', function () {
+  assert.strictEqual(g.computeInvoice([{ qty: 1, rate: 100, gstRate: 18 }], '23', '23', 5000).taxable, 0);
+  assert.strictEqual(g.computeInvoice([{ qty: 1, rate: 100, gstRate: 18 }], '23', '23', -40).taxable, 100);
+  assert.strictEqual(g.computeInvoice([{ qty: 1, rate: 100, gstRate: 18 }], '23', '23').discount, 0);
+});
+
+test('lines carry their own cgst/sgst so the print can fill columns', function () {
+  const r = g.computeInvoice([{ qty: 1, rate: 100, gstRate: 18 }], '23', '23');
+  assert.strictEqual(r.lines[0].cgst, 9);
+  assert.strictEqual(r.lines[0].sgst, 9);
+  assert.strictEqual(r.lines[0].lineWithTax, 118);
+  const inter = g.computeInvoice([{ qty: 1, rate: 100, gstRate: 18 }], '23', '27');
+  assert.strictEqual(inter.lines[0].igst, 18);
+  assert.strictEqual(inter.lines[0].cgst, 0);
+});
+
+console.log('\nLocal date');
+
+test('formats the local calendar date, not the UTC one', function () {
+  const d = new Date(2026, 8, 12, 1, 30); // 01:30 local on 12 Sep
+  assert.strictEqual(g.localDate(d), '2026-09-12');
+  assert.strictEqual(g.localDate(new Date(2026, 0, 5, 0, 0)), '2026-01-05');
+});
+
 console.log('\n' + passed + ' passed\n');

@@ -16,13 +16,18 @@ body::before { display: none !important; }
 .doc {
   min-height: 134mm;
   box-sizing: border-box;
-  padding-bottom: 3mm;
+  padding-bottom: 1.5mm;
   font: 8.5pt/1.32 "Segoe UI", -apple-system, system-ui, sans-serif;
   color: #000;
   page-break-after: auto;
   page-break-inside: avoid;
   position: relative;
+  display: flex;
+  flex-direction: column;
 }
+/* Floats are ignored on flex items, so the totals float lives inside this
+   block wrapper; clearing here keeps the signatures below both columns. */
+.doc-summary { display: flow-root; }
 .doc:first-child {
   border-bottom: 1px dashed #999;
   margin-bottom: 4mm;
@@ -34,8 +39,8 @@ body::before { display: none !important; }
   align-items: center;
   background: #000;
   color: #fff;
-  padding: 5pt 8pt;
-  margin: 0 0 5pt;
+  padding: 4pt 8pt;
+  margin: 0 0 4pt;
 }
 .doc-title {
   font-size: 12.5pt;
@@ -54,7 +59,16 @@ body::before { display: none !important; }
   white-space: nowrap;
 }
 
-.doc-supplier { display: flex; align-items: center; gap: 8pt; margin-bottom: 3.5pt; }
+/* Invoice number and date sit at the right of the supplier row; giving them
+   a strip of their own cost 9mm per copy for two short values. */
+.doc-supplier {
+  display: flex;
+  align-items: center;
+  gap: 8pt;
+  margin-bottom: 3.5pt;
+  padding-bottom: 3pt;
+  border-bottom: 0.75pt solid #000;
+}
 .doc-logo { height: 24pt; max-width: 70pt; object-fit: contain; }
 .doc-supplier-text { min-width: 0; }
 .doc-supplier-name { font-weight: 700; font-size: 9.5pt; }
@@ -63,11 +77,10 @@ body::before { display: none !important; }
 .doc-meta {
   display: flex;
   gap: 14pt;
-  border-top: 0.75pt solid #000;
-  border-bottom: 0.75pt solid #000;
-  padding: 2.5pt 0;
-  margin-bottom: 3.5pt;
+  margin-left: auto;
+  text-align: right;
   font-size: 8pt;
+  white-space: nowrap;
 }
 .doc-label {
   display: block;
@@ -78,7 +91,11 @@ body::before { display: none !important; }
   color: #555;
 }
 
-.doc-recipient { font-size: 8pt; margin-bottom: 3.5pt; line-height: 1.35; }
+/* Who and where side by side — six stacked lines here cost 22mm, more than
+   the whole line table on a typical invoice. */
+.doc-recipient { display: flex; gap: 14pt; font-size: 8pt; margin-bottom: 2.5pt; line-height: 1.35; }
+.doc-recipient-who { flex: 1 1 60%; min-width: 0; }
+.doc-recipient-supply { flex: 1 1 40%; min-width: 0; }
 .doc-recipient .doc-label { margin-bottom: 1pt; }
 
 .doc-lines { width: 100%; border-collapse: collapse; font-size: 8pt; }
@@ -94,23 +111,35 @@ body::before { display: none !important; }
 }
 .doc-lines td { padding: 2.5pt 4pt; vertical-align: top; }
 .doc-lines tbody tr:nth-child(even) td { background: #F0F0F0; }
-.doc-lines tbody tr:last-child td { border-bottom: 0.75pt solid #000; }
-.c-desc { width: 64%; }
-.c-qty { width: 12%; text-align: right; }
-.c-amt { width: 24%; text-align: right; }
-/* Mixed-rate invoices gain a GST column; the description gives up the room. */
-.doc-lines-gst .c-desc { width: 52%; }
-.c-gst { width: 12%; text-align: right; }
-.doc-lines td.c-qty, .doc-lines td.c-gst, .doc-lines td.c-amt {
+/* Tax is carried per line: Description | Qty | Rate | Taxable | CGST | SGST | Total
+   within the state, with a single IGST column across state lines. */
+.c-desc { width: 34%; }
+.c-qty { width: 6%; text-align: right; }
+.c-rate { width: 10%; text-align: right; }
+.c-taxable { width: 12%; text-align: right; }
+.c-tax { width: 13.5%; text-align: right; white-space: nowrap; }
+.c-amt { width: 11%; text-align: right; }
+.doc-lines-inter .c-desc { width: 40%; }
+.doc-lines-inter .c-tax { width: 15%; }
+.doc-lines td.c-qty, .doc-lines td.c-rate, .doc-lines td.c-taxable,
+.doc-lines td.c-tax, .doc-lines td.c-amt {
   font-family: Consolas, monospace;
   text-align: right;
 }
+.doc-pct { font-size: 6.5pt; color: #555; margin-right: 3pt; font-family: "Segoe UI", sans-serif; }
+.doc-lines tfoot td {
+  font-weight: 700;
+  border-top: 0.75pt solid #000;
+  border-bottom: 0.75pt solid #000;
+  padding: 2.5pt 4pt;
+}
+.doc-lines tfoot td.c-desc { font-family: "Segoe UI", sans-serif; text-transform: uppercase; font-size: 6.5pt; letter-spacing: 0.04em; }
 
 /* Totals float right; words, thanks and the acknowledgement fill the left
    column beside them instead of stacking underneath. A two-rate invoice
    carries six tax rows, and stacked it no longer fit two copies on a sheet. */
-.doc-totals { font-size: 8pt; float: right; width: 48%; margin-top: 4pt; }
-.doc-total-row { display: flex; justify-content: space-between; padding: 1pt 2pt; }
+.doc-totals { font-size: 8pt; float: right; width: 48%; margin-top: 3pt; }
+.doc-total-row { display: flex; justify-content: space-between; padding: 0.5pt 2pt; }
 .doc-total-row span:last-child { font-family: Consolas, monospace; }
 .doc-total-final {
   background: #000;
@@ -140,17 +169,17 @@ body::before { display: none !important; }
   line-height: 1.35;
 }
 
-.doc-signs { clear: both; display: flex; gap: 14pt; margin-top: 6pt; }
+.doc-signs { display: flex; gap: 14pt; margin-top: auto; padding-top: 5pt; }
 .doc-sign-block { flex: 1; }
 .doc-sign-rule { height: 16pt; border-bottom: 0.5pt solid #000; margin-bottom: 2pt; }
 .doc-sign-label { font-size: 7.5pt; font-weight: 600; }
 .doc-sign-sub { font-size: 7pt; color: #444; }
-.doc-sign-fill { font-size: 7pt; color: #444; margin-top: 2pt; }
+.doc-sign-fill { display: inline-block; font-size: 7pt; color: #444; margin-top: 2pt; margin-right: 10pt; }
 .doc-sign-fill::after { content: ' ____________'; letter-spacing: -0.5pt; }
 
 /* The original has no acknowledgement block, so it can breathe more. */
-.doc:first-child .doc-signs { margin-top: 12pt; }
-.doc:first-child .doc-sign-rule { height: 22pt; }
+.doc:first-child .doc-signs { padding-top: 6pt; }
+.doc:first-child .doc-sign-rule { height: 16pt; }
 
 body.page-a5 .doc { height: auto; page-break-after: always; }
 body.page-80mm .doc { height: auto; font-size: 7.5pt; page-break-after: always; }

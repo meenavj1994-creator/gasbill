@@ -76,7 +76,39 @@ function round2(n) {
   return Math.round((n + Number.EPSILON) * 100) / 100;
 }
 
-function computeInvoice(lines, supplierStateCode, placeOfSupplyCode) {
+/* Local calendar date as YYYY-MM-DD. toISOString() gives the UTC date, which
+   east of Greenwich is yesterday for the first few hours of every morning —
+   an invoice raised at 8am IST must not carry yesterday's date. */
+function localDate(d) {
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') +
+    '-' + String(d.getDate()).padStart(2, '0');
+}
+
+/* Splits an invoice-level discount across lines in proportion to their gross
+   value, in paise, with the last line taking whatever rounding leaves over so
+   the shares always add up to exactly the discount given. */
+function apportionDiscount(grossValues, discount) {
+  const grossTotal = grossValues.reduce(function (a, b) { return a + b; }, 0);
+  const shares = grossValues.map(function () { return 0; });
+  if (!(discount > 0) || grossTotal <= 0) return shares;
+
+  let allocated = 0;
+  let last = -1;
+  grossValues.forEach(function (g, i) {
+    if (g <= 0) return;
+    shares[i] = round2(discount * g / grossTotal);
+    allocated = round2(allocated + shares[i]);
+    last = i;
+  });
+  if (last >= 0) shares[last] = round2(shares[last] + (discount - allocated));
+  return shares;
+}
+
+/* Discount is applied to the value *before* tax and pushed down into each
+   line, because Section 15(3) only excludes a discount from taxable value
+   when it is recorded on the invoice against the supply. A discount taken off
+   the grand total after tax would leave GST payable on money never collected. */
+function computeInvoice(lines, supplierStateCode, placeOfSupplyCode, discount) {
   const intraState = supplierStateCode === placeOfSupplyCode;
   let taxable = 0;
   let cgst = 0;
@@ -84,11 +116,16 @@ function computeInvoice(lines, supplierStateCode, placeOfSupplyCode) {
   let igst = 0;
   const buckets = new Map();
 
-  const priced = lines.map(function (line) {
-    const qty = Number(line.qty) || 0;
-    const rate = Number(line.rate) || 0;
+  const grossValues = lines.map(function (line) {
+    return round2((Number(line.qty) || 0) * (Number(line.rate) || 0));
+  });
+  const gross = round2(grossValues.reduce(function (a, b) { return a + b; }, 0));
+  discount = round2(Math.min(Math.max(Number(discount) || 0, 0), gross));
+  const shares = apportionDiscount(grossValues, discount);
+
+  const priced = lines.map(function (line, i) {
     const gstRate = Number(line.gstRate) || 0;
-    const lineTotal = round2(qty * rate);
+    const lineTotal = round2(grossValues[i] - shares[i]);
     const tax = round2(lineTotal * gstRate / 100);
 
     if (!buckets.has(gstRate)) {
@@ -98,17 +135,31 @@ function computeInvoice(lines, supplierStateCode, placeOfSupplyCode) {
     bucket.taxable += lineTotal;
 
     taxable += lineTotal;
+    let lineCgst = 0;
+    let lineSgst = 0;
+    let lineIgst = 0;
     if (intraState) {
-      const half = round2(tax / 2);
-      cgst += half;
-      sgst += round2(tax - half);
-      bucket.cgst += half;
-      bucket.sgst += round2(tax - half);
+      lineCgst = round2(tax / 2);
+      lineSgst = round2(tax - lineCgst);
+      cgst += lineCgst;
+      sgst += lineSgst;
+      bucket.cgst += lineCgst;
+      bucket.sgst += lineSgst;
     } else {
+      lineIgst = tax;
       igst += tax;
       bucket.igst += tax;
     }
-    return Object.assign({}, line, { lineTotal, taxAmount: tax });
+    return Object.assign({}, line, {
+      gross: grossValues[i],
+      discount: shares[i],
+      lineTotal,
+      taxAmount: tax,
+      cgst: lineCgst,
+      sgst: lineSgst,
+      igst: lineIgst,
+      lineWithTax: round2(lineTotal + tax)
+    });
   });
 
   /* One row per GST rate. A single "CGST @ 9%" line cannot describe an invoice
@@ -133,7 +184,7 @@ function computeInvoice(lines, supplierStateCode, placeOfSupplyCode) {
   const total = Math.round(beforeRounding);
   const rounding = round2(total - beforeRounding);
 
-  return { lines: priced, intraState, taxable, cgst, sgst, igst, byRate, beforeRounding, rounding, total };
+  return { lines: priced, intraState, gross, discount, taxable, cgst, sgst, igst, byRate, beforeRounding, rounding, total };
 }
 
 /* The rate-wise breakup for an invoice already saved. Nothing stores it, but
@@ -218,5 +269,7 @@ module.exports = {
   computeInvoice,
   taxBreakupFromLines,
   amountInWords,
+  localDate,
+  apportionDiscount,
   round2
 };

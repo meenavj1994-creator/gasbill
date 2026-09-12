@@ -89,6 +89,8 @@
 
     </div><aside class="col-side">
     <section class="totals">
+      <div class="total-row"><span>Amount</span><span id="t-gross">0.00</span></div>
+      <div class="total-row total-row-input"><label for="t-discount">Discount</label><input id="t-discount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" aria-label="Discount before tax" /></div>
       <div class="total-row"><span>Taxable value</span><span id="t-taxable">0.00</span></div>
       <div id="t-tax-rows"></div>
       <div class="total-row"><span>Rounding</span><span id="t-rounding">0.00</span></div>
@@ -120,28 +122,36 @@
         <div data-supplier-address></div>
         <div class="doc-mono">GSTIN <span data-supplier-gstin></span></div>
       </div>
-    </div>
-    <div class="doc-meta">
-      <div><span class="doc-label">Invoice no</span><span class="doc-mono" data-invoice-no></span></div>
-      <div><span class="doc-label">Date</span><span class="doc-mono" data-invoice-date></span></div>
+      <div class="doc-meta">
+        <div><span class="doc-label">Invoice no</span><span class="doc-mono" data-invoice-no></span></div>
+        <div><span class="doc-label">Date</span><span class="doc-mono" data-invoice-date></span></div>
+      </div>
     </div>
     <div class="doc-recipient">
-      <div class="doc-label">Recipient</div>
-      <div data-customer-name></div>
-      <div data-customer-address></div>
-      <div data-consumer-line></div>
-      <div data-customer-gstin-line></div>
-      <div data-place-of-supply></div>
-      <div>Reverse charge — No</div>
+      <div class="doc-recipient-who">
+        <div class="doc-label">Recipient</div>
+        <div data-customer-name></div>
+        <div data-customer-address></div>
+        <div data-consumer-line></div>
+        <div data-customer-gstin-line></div>
+      </div>
+      <div class="doc-recipient-supply">
+        <div class="doc-label">Supply</div>
+        <div data-place-of-supply></div>
+        <div>Reverse charge — No</div>
+      </div>
     </div>
     <table class="doc-lines">
-      <thead><tr><th class="c-desc">Description</th><th class="c-qty">Qty</th><th class="c-gst" data-gst-head hidden>GST</th><th class="c-amt">Amount</th></tr></thead>
+      <thead data-head></thead>
       <tbody data-lines></tbody>
+      <tfoot data-foot></tfoot>
     </table>
-    <div class="doc-totals" data-totals></div>
-    <div class="doc-words" data-words></div>
-    <div class="doc-thanks" data-thanks>Thank you for your business.</div>
-    <div class="doc-ack" data-ack hidden></div>
+    <div class="doc-summary">
+      <div class="doc-totals" data-totals></div>
+      <div class="doc-words" data-words></div>
+      <div class="doc-thanks" data-thanks>Thank you for your business.</div>
+      <div class="doc-ack" data-ack hidden></div>
+    </div>
     <div class="doc-signs">
       <div class="doc-sign-block" data-customer-sign hidden>
         <div class="doc-sign-rule"></div>
