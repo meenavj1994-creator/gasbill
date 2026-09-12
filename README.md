@@ -6,7 +6,7 @@ service charges. No server, no hosting, no internet needed to run.
 ## Running it
 
     npm install
-    npm test          # 78 fast tests
+    npm test          # 86 fast tests
     npm run test:all  # adds 3 OCR tests (~10s, needs eng.traineddata)
     npm start         # run the app
     npm run dist      # build the Windows NSIS installer
@@ -113,7 +113,8 @@ dropdown needs opening. Charges are picked from a dropdown of the active
 charge list and added with the Add button (or Enter).
 
 Closing the app with an invoice half-finished does not save it — there is no
-draft recovery. Whatever was on screen is gone on next launch.
+draft recovery. Whatever was on screen is gone on next launch. A saved
+invoice can be corrected or removed from the Invoices page.
 
 ## Screens
 
@@ -124,6 +125,9 @@ draft recovery. Whatever was on screen is gone on next launch.
 - `charges.html` — charges, products and sets. Add, confirm and revise items,
   and group the ones that get billed together.
 - `consumers.html` — XLSX/CSV import with column mapping and guessed defaults.
+- `invoices.html` — every invoice on file, filtered by month, financial year
+  or custom dates, searchable by number, customer or consumer. Reprint, edit,
+  delete.
 - `reports.html` — workbook export by financial year, month, or custom dates.
 - `settings.html` — edit the business details, logo, series prefix,
   acknowledgement wording and backup folder after first run. `saveDistributor`
@@ -350,6 +354,33 @@ which is what every report already reads, so the reports needed no change.
 The discount is stored beside it — `invoices.discount` as typed, and
 `invoice_lines.discount` as each line's share — so gross can be rebuilt for
 the print. Migration v6 adds both columns with a default of zero.
+
+## Editing and deleting invoices
+
+The distributor asked for delete rather than cancel, so a wrong invoice can
+be removed outright from the Invoices page and it then appears in no report.
+Two rules keep that from damaging the series:
+
+**The counter follows the records.** `recomputeCounter` sets a month's next
+number to one past the highest number still on file for that month. Delete
+the latest invoice and the next one takes its number, so "delete and redo"
+leaves no gap. Delete every test invoice before go-live and the month
+restarts at 0001 — there is no reset button because none is needed, and the
+installer never carries a database in the first place. Delete one from the
+middle and the later numbers stay as they are (they are on printed paper);
+that gap remains, and the CA should hear about it.
+
+**Edit is delete-and-reinsert in one transaction.** The billing screen opens
+with `?edit=<id>`, loads the invoice into the form, and on save calls
+`replaceInvoice`, which removes the old row and inserts the corrected one
+together — a failure leaves the original untouched. The date is kept; the
+number is kept when the invoice was the latest of its month and is otherwise
+the next free one, never a number already in use. An invoice referenced by a
+credit note refuses to be deleted.
+
+Reprints use `printable.js`, the same renderer the billing screen uses right
+after save, so a reprint is the identical document rather than a second
+template drifting from the first.
 
 ## More than one machine at an agency
 

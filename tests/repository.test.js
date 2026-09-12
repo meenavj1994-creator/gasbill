@@ -386,4 +386,91 @@ test('dates the invoice by the local calendar, even just after midnight', functi
   assert.strictEqual(inv.invoice_date, '2026-09-15');
 });
 
+console.log('\nDelete and edit');
+
+test('deleting the latest invoice frees its number for the next one', function () {
+  const { repo } = freshRepo();
+  repo.saveInvoice(customer({ invoice_date: '2026-09-03' }));
+  const second = repo.saveInvoice(customer({ invoice_date: '2026-09-04' }));
+  assert.strictEqual(second.invoice_no, 'SH/2627/09/0002');
+  repo.deleteInvoice(second.id);
+  assert.strictEqual(repo.getInvoice(second.id), null);
+  const again = repo.saveInvoice(customer({ invoice_date: '2026-09-05' }));
+  assert.strictEqual(again.invoice_no, 'SH/2627/09/0002');
+});
+
+test('deleting from the middle leaves later numbers alone and keeps the gap', function () {
+  const { repo } = freshRepo();
+  const first = repo.saveInvoice(customer({ invoice_date: '2026-09-03' }));
+  repo.saveInvoice(customer({ invoice_date: '2026-09-03' }));
+  repo.saveInvoice(customer({ invoice_date: '2026-09-03' }));
+  repo.deleteInvoice(first.id);
+  const next = repo.saveInvoice(customer({ invoice_date: '2026-09-06' }));
+  assert.strictEqual(next.invoice_no, 'SH/2627/09/0004');
+  const numbers = repo.listInvoices({}).map(function (r) { return r.invoice_no; }).sort();
+  assert.deepStrictEqual(numbers, ['SH/2627/09/0002', 'SH/2627/09/0003', 'SH/2627/09/0004']);
+});
+
+test('deleting every test invoice restarts the month at 0001', function () {
+  const { repo } = freshRepo();
+  const ids = [1, 2, 3].map(function () { return repo.saveInvoice(customer({ invoice_date: '2026-09-03' })).id; });
+  ids.forEach(function (id) { repo.deleteInvoice(id); });
+  assert.strictEqual(repo.listInvoices({}).length, 0);
+  assert.strictEqual(repo.saveInvoice(customer({ invoice_date: '2026-09-09' })).invoice_no, 'SH/2627/09/0001');
+});
+
+test('deleting only touches the counter of its own month', function () {
+  const { repo } = freshRepo();
+  repo.saveInvoice(customer({ invoice_date: '2026-09-03' }));
+  const oct = repo.saveInvoice(customer({ invoice_date: '2026-10-03' }));
+  repo.deleteInvoice(oct.id);
+  assert.strictEqual(repo.saveInvoice(customer({ invoice_date: '2026-09-20' })).invoice_no, 'SH/2627/09/0002');
+  assert.strictEqual(repo.saveInvoice(customer({ invoice_date: '2026-10-20' })).invoice_no, 'SH/2627/10/0001');
+});
+
+test('editing the latest invoice keeps its number and date', function () {
+  const { repo } = freshRepo();
+  repo.saveInvoice(customer({ invoice_date: '2026-09-03' }));
+  const inv = repo.saveInvoice(customer({ invoice_date: '2026-09-04' }));
+  const fixed = repo.replaceInvoice(inv.id, customer({ customer_name: 'Corrected Name', discount: 10 }));
+  assert.strictEqual(fixed.invoice_no, inv.invoice_no);
+  assert.strictEqual(fixed.invoice_date, '2026-09-04');
+  assert.strictEqual(fixed.customer_name, 'Corrected Name');
+  assert.strictEqual(fixed.discount, 10);
+  // SQLite may hand the replacement the freed rowid; what matters is that
+  // exactly one invoice carries this number and it is the corrected one.
+  const all = repo.listInvoices({ q: inv.invoice_no });
+  assert.strictEqual(all.length, 1);
+  assert.strictEqual(all[0].customer_name, 'Corrected Name');
+  assert.strictEqual(repo.listInvoices({}).length, 2);
+});
+
+test('editing an older invoice takes the next free number, never a used one', function () {
+  const { repo } = freshRepo();
+  const first = repo.saveInvoice(customer({ invoice_date: '2026-09-03' }));
+  repo.saveInvoice(customer({ invoice_date: '2026-09-04' }));
+  const fixed = repo.replaceInvoice(first.id, customer({ customer_name: 'Fixed' }));
+  assert.strictEqual(fixed.invoice_no, 'SH/2627/09/0003');
+  assert.strictEqual(fixed.invoice_date, '2026-09-03');
+});
+
+test('edit is one transaction — a bad payload leaves the original untouched', function () {
+  const { repo } = freshRepo();
+  const inv = repo.saveInvoice(customer({ invoice_date: '2026-09-03' }));
+  assert.throws(function () { repo.replaceInvoice(inv.id, customer({ customer_name: null })); });
+  assert.ok(repo.getInvoice(inv.id), 'original was lost');
+  assert.strictEqual(repo.listInvoices({}).length, 1);
+});
+
+test('listInvoices filters by date and searches number, name and consumer', function () {
+  const { repo } = freshRepo();
+  repo.saveInvoice(customer({ invoice_date: '2026-09-03' }));
+  repo.saveInvoice(customer({ invoice_date: '2026-10-03', customer_name: 'Sunita Verma', consumer_no: '9900' }));
+  assert.strictEqual(repo.listInvoices({ from: '2026-09-01', to: '2026-09-30' }).length, 1);
+  assert.strictEqual(repo.listInvoices({ q: 'sunita' }).length, 1);
+  assert.strictEqual(repo.listInvoices({ q: '9900' }).length, 1);
+  assert.strictEqual(repo.listInvoices({ q: '/10/' }).length, 1);
+  assert.strictEqual(repo.listInvoices({}).length, 2);
+});
+
 console.log('\n' + passed + ' passed\n');

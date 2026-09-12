@@ -15,6 +15,7 @@
     <span class="bar-gstin" id="bar-gstin"></span>
     <nav class="bar-nav">
       <a href="index.html" class="bar-link active">Billing</a>
+      <a href="invoices.html" class="bar-link">Invoices</a>
       <a href="charges.html" class="bar-link">Charges</a>
       <a href="consumers.html" class="bar-link">Consumers</a>
       <a href="reports.html" class="bar-link">Reports</a>
@@ -24,6 +25,11 @@
 
   <div id="backup-warning" class="notice notice-warn" hidden></div>
 
+  <div id="edit-banner" class="notice notice-warn" hidden>
+    <span id="edit-banner-text"></span>
+    <a href="invoices.html" class="mini-link">Cancel</a>
+  </div>
+
   <div id="update-banner" class="notice notice-update" hidden>
     <span id="update-text"></span>
     <button id="update-install" type="button" class="mini">Restart to update</button>
@@ -31,7 +37,7 @@
 
   <main class="sheet"><div class="cols"><div class="col-main">
     <div class="sheet-head">
-      <h1>New invoice</h1>
+      <h1 id="page-title">New invoice</h1>
       <span class="serial" id="next-number">—</span>
     </div>
 
@@ -108,66 +114,7 @@
 
 <div id="toast" class="toast" hidden role="status" aria-live="polite"></div>
 <div class="print-only" id="print-area"></div>
-
-<template id="invoice-template">
-  <article class="doc">
-    <div class="doc-head">
-      <div class="doc-title">Tax invoice</div>
-      <div class="doc-copy" data-copy></div>
-    </div>
-    <div class="doc-supplier">
-      <img class="doc-logo" data-logo hidden />
-      <div class="doc-supplier-text">
-        <div class="doc-supplier-name" data-trade-name></div>
-        <div data-supplier-address></div>
-        <div class="doc-mono">GSTIN <span data-supplier-gstin></span></div>
-      </div>
-      <div class="doc-meta">
-        <div><span class="doc-label">Invoice no</span><span class="doc-mono" data-invoice-no></span></div>
-        <div><span class="doc-label">Date</span><span class="doc-mono" data-invoice-date></span></div>
-      </div>
-    </div>
-    <div class="doc-recipient">
-      <div class="doc-recipient-who">
-        <div class="doc-label">Recipient</div>
-        <div data-customer-name></div>
-        <div data-customer-address></div>
-        <div data-consumer-line></div>
-        <div data-customer-gstin-line></div>
-      </div>
-      <div class="doc-recipient-supply">
-        <div class="doc-label">Supply</div>
-        <div data-place-of-supply></div>
-        <div>Reverse charge — No</div>
-      </div>
-    </div>
-    <table class="doc-lines">
-      <thead data-head></thead>
-      <tbody data-lines></tbody>
-      <tfoot data-foot></tfoot>
-    </table>
-    <div class="doc-summary">
-      <div class="doc-totals" data-totals></div>
-      <div class="doc-words" data-words></div>
-      <div class="doc-thanks" data-thanks>Thank you for your business.</div>
-      <div class="doc-ack" data-ack hidden></div>
-    </div>
-    <div class="doc-signs">
-      <div class="doc-sign-block" data-customer-sign hidden>
-        <div class="doc-sign-rule"></div>
-        <div class="doc-sign-label">Customer signature</div>
-        <div class="doc-sign-fill">Name</div>
-        <div class="doc-sign-fill">Date</div>
-      </div>
-      <div class="doc-sign-block">
-        <div class="doc-sign-rule"></div>
-        <div class="doc-sign-label" data-sign-for></div>
-        <div class="doc-sign-sub">Authorised signatory</div>
-      </div>
-    </div>
-  </article>
-</template>
-
+<script src="printable.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

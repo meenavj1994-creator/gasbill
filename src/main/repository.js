@@ -123,7 +123,7 @@ function createRepository(db) {
     return gst.buildInvoiceNumber(d.series_prefix, when, row ? row.next_value : 1);
   }
 
-  const saveInvoice = db.transaction(function (payload) {
+  function insertInvoice(payload) {
     const d = getDistributor();
     if (!d) throw new Error('Distributor setup is not complete.');
 
@@ -176,7 +176,70 @@ function createRepository(db) {
     }
 
     return getInvoice(info.lastInsertRowid);
+  }
+
+  const saveInvoice = db.transaction(insertInvoice);
+
+  /* The counter for a month is "one past the highest number still on file",
+     recomputed from the invoices themselves. So deleting the latest invoice
+     hands its number to the next one, and deleting every test invoice before
+     go-live restarts the series at 0001 without a reset button. Deleting one
+     from the middle leaves the later numbers as they are — they are on
+     printed paper — and the gap stays. */
+  function recomputeCounter(periodKey) {
+    const fy = periodKey.slice(0, 4);
+    const month = periodKey.slice(5, 7);
+    const row = db.prepare(`SELECT MAX(CAST(substr(invoice_no, -4) AS INTEGER)) AS top
+      FROM invoices WHERE fy_label = ? AND substr(invoice_date, 6, 2) = ?`).get(fy, month);
+    const next = (row && row.top ? row.top : 0) + 1;
+    db.prepare(`INSERT INTO invoice_counters (period_key, next_value) VALUES (?, ?)
+      ON CONFLICT(period_key) DO UPDATE SET next_value = excluded.next_value`).run(periodKey, next);
+    return next;
+  }
+
+  function removeInvoiceRows(id) {
+    const inv = db.prepare('SELECT * FROM invoices WHERE id = ?').get(id);
+    if (!inv) throw new Error('That invoice no longer exists.');
+    const notes = db.prepare('SELECT COUNT(*) AS n FROM credit_notes WHERE invoice_id = ?').get(id).n;
+    if (notes) throw new Error('A credit note refers to ' + inv.invoice_no + '; it cannot be deleted.');
+    db.prepare('DELETE FROM invoice_lines WHERE invoice_id = ?').run(id);
+    db.prepare('DELETE FROM invoices WHERE id = ?').run(id);
+    recomputeCounter(gst.periodKey(inv.invoice_date));
+    return inv;
+  }
+
+  const deleteInvoice = db.transaction(function (id) {
+    const inv = removeInvoiceRows(id);
+    return { invoice_no: inv.invoice_no };
   });
+
+  /* Edit = delete the old row and insert the corrected one in a single
+     transaction. The date is kept unless the caller sends one; the number is
+     the same one if the old invoice was the latest of its month, otherwise
+     the next free number. */
+  const replaceInvoice = db.transaction(function (id, payload) {
+    const old = removeInvoiceRows(id);
+    const next = Object.assign({}, payload, {
+      invoice_date: payload.invoice_date || old.invoice_date
+    });
+    return insertInvoice(next);
+  });
+
+  function listInvoices(filter) {
+    const f = filter || {};
+    const where = [];
+    const args = [];
+    if (f.from) { where.push('invoice_date >= ?'); args.push(f.from); }
+    if (f.to) { where.push('invoice_date <= ?'); args.push(f.to); }
+    if (f.q) {
+      where.push('(invoice_no LIKE ? OR customer_name LIKE ? OR consumer_no LIKE ?)');
+      const like = '%' + f.q + '%';
+      args.push(like, like, like);
+    }
+    return db.prepare(`SELECT id, invoice_no, invoice_date, consumer_no, customer_name, total, discount
+      FROM invoices ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
+      ORDER BY invoice_date DESC, id DESC LIMIT 500`).all(...args);
+  }
 
   function getInvoice(id) {
     const inv = db.prepare('SELECT * FROM invoices WHERE id = ?').get(id);
@@ -249,7 +312,8 @@ function createRepository(db) {
     activeCharges, allCharges, addCharge, reviseCharge, chargeUsageCount,
     listBundles, saveBundle, deleteBundle, resolveBundle,
     findConsumer, searchConsumers, importConsumers,
-    nextInvoicePreview, saveInvoice, getInvoice, invoicesBetween
+    nextInvoicePreview, saveInvoice, getInvoice, invoicesBetween,
+    listInvoices, deleteInvoice, replaceInvoice, recomputeCounter
   };
 }
 

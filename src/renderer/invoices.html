@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Invoices — GasBill</title>
+<link rel="stylesheet" href="app.css" />
+<link rel="stylesheet" href="print.css" media="print" />
+</head>
+<body>
+<div class="app">
+  <header class="bar">
+    <div class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17h6M12 3s5 5.2 5 9a5 5 0 0 1-10 0c0-3.8 5-9 5-9Z"/></svg></div>
+    <span class="bar-name">Invoices</span>
+    <nav class="bar-nav"><a href="index.html" class="bar-link">Billing</a><a href="invoices.html" class="bar-link active">Invoices</a><a href="charges.html" class="bar-link">Charges</a><a href="consumers.html" class="bar-link">Consumers</a><a href="reports.html" class="bar-link">Reports</a><a href="settings.html" class="bar-link">Settings</a></nav>
+  </header>
+  <main class="sheet">
+    <div class="sheet-head"><h1>Invoices</h1><span class="serial" id="count"></span></div>
+
+    <div class="inv-tools">
+      <div class="field">
+        <label for="preset">Period</label>
+        <select id="preset">
+          <option value="month">This month</option>
+          <option value="fy">This financial year</option>
+          <option value="custom">Custom dates</option>
+          <option value="all">All</option>
+        </select>
+      </div>
+      <div class="field" id="from-field" hidden>
+        <label for="from">From</label>
+        <input id="from" type="date" />
+      </div>
+      <div class="field" id="to-field" hidden>
+        <label for="to">To</label>
+        <input id="to" type="date" />
+      </div>
+      <div class="field field-search">
+        <label for="q">Search</label>
+        <input id="q" placeholder="Invoice number, customer or consumer number" autocomplete="off" />
+      </div>
+    </div>
+
+    <p class="hint" id="note"></p>
+
+    <table class="inv-table" id="table">
+      <thead>
+        <tr>
+          <th>Number</th><th>Date</th><th>Customer</th><th>Consumer</th><th class="right">Total</th><th></th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <p class="inv-empty" id="empty" hidden>No invoices in this period.</p>
+  </main>
+</div>
+
+<div id="toast" class="toast" hidden role="status" aria-live="polite"></div>
+<div class="print-only" id="print-area"></div>
+
+<script src="printable.js"></script>
+<script src="invoices.js"></script>
+</body>
+</html>

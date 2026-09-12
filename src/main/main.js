@@ -240,6 +240,9 @@ handle('consumers:import', function (rows) { return repo.importConsumers(rows); 
 handle('invoice:preview', function (date) { return repo.nextInvoicePreview(date); });
 handle('invoice:save', function (payload) { return repo.saveInvoice(payload); });
 handle('invoice:get', function (id) { return repo.getInvoice(id); });
+handle('invoice:list', function (filter) { return repo.listInvoices(filter); });
+handle('invoice:delete', function (id) { return repo.deleteInvoice(id); });
+handle('invoice:replace', function (id, payload) { return repo.replaceInvoice(id, payload); });
 handle('invoice:between', function (from, to) { return repo.invoicesBetween(from, to); });
 
 handle('gstin:validate', function (value, stateCode) { return gst.validateGstin(value, stateCode); });

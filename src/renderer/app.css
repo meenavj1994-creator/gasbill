@@ -648,3 +648,25 @@ button:disabled { opacity: 0.55; cursor: default; }
   }
   .sheet, .setup-section, .bar { animation: none !important; }
 }
+
+/* Invoices page */
+.inv-tools { display: flex; gap: var(--space-3); flex-wrap: wrap; align-items: flex-end; margin-bottom: var(--space-4); }
+.inv-tools .field { margin: 0; min-width: 180px; }
+.inv-tools .field-search { flex: 1 1 240px; }
+.inv-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.inv-table th {
+  text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--slate); padding: 6px 10px; border-bottom: 1px solid var(--rule);
+}
+.inv-table td { padding: 9px 10px; border-bottom: 1px solid rgba(0,0,0,0.06); vertical-align: middle; }
+.inv-table tr:hover td { background: rgba(0,123,201,0.05); }
+.inv-table .num { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.inv-table .right, .inv-table th.right { text-align: right; }
+.inv-table .acts { white-space: nowrap; text-align: right; }
+.inv-table .acts button { min-height: 32px; padding: 4px 12px; font-size: 13px; margin-left: 6px; }
+.inv-table .danger { color: var(--danger); border-color: rgba(214,72,60,0.35); }
+.inv-table .danger:hover { background: var(--danger-tint); }
+.inv-confirm td { background: var(--gold-tint); }
+.inv-confirm .row { display: flex; gap: var(--space-3); align-items: center; flex-wrap: wrap; }
+.inv-empty { padding: var(--space-6); text-align: center; color: var(--slate); }
+.mini-link { margin-left: auto; font-size: 13px; color: inherit; text-decoration: underline; }

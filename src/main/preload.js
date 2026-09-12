@@ -42,7 +42,10 @@ contextBridge.exposeInMainWorld('api', {
     preview: call('invoice:preview'),
     save: call('invoice:save'),
     get: call('invoice:get'),
-    between: call('invoice:between')
+    between: call('invoice:between'),
+    list: call('invoice:list'),
+    remove: call('invoice:delete'),
+    replace: call('invoice:replace')
   },
   validateGstin: call('gstin:validate'),
   compute: call('compute'),
