@@ -670,3 +670,16 @@ button:disabled { opacity: 0.55; cursor: default; }
 .inv-confirm .row { display: flex; gap: var(--space-3); align-items: center; flex-wrap: wrap; }
 .inv-empty { padding: var(--space-6); text-align: center; color: var(--slate); }
 .mini-link { margin-left: auto; font-size: 13px; color: inherit; text-decoration: underline; }
+
+/* Checkbox with its label and an explanatory line, laid out like a field */
+.check-row { display: flex; gap: 10px; align-items: flex-start; padding-top: 26px; cursor: pointer; font-size: 14px; }
+.check-row input[type="checkbox"] { width: 18px; min-height: 18px; margin-top: 2px; flex: 0 0 auto; cursor: pointer; }
+.check-row small { display: block; font-size: 12px; color: var(--slate); margin-top: 2px; line-height: 1.4; }
+.revise-panel .check-row { padding-top: 24px; }
+
+/* HSN/SAC reference on the charges page */
+.code-ref { margin-top: var(--space-6); font-size: 14px; }
+.code-ref summary { cursor: pointer; font-weight: 600; color: var(--blue-dark); padding: 6px 0; }
+.code-table { border-collapse: collapse; margin-top: var(--space-2); }
+.code-table td { padding: 5px 14px 5px 0; border-bottom: 1px solid var(--rule-soft); }
+.code-table td.code { font-family: var(--mono); font-weight: 600; }

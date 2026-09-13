@@ -21,7 +21,8 @@ contextBridge.exposeInMainWorld('api', {
     active: call('charges:active'),
     all: call('charges:all'),
     add: call('charges:add'),
-    revise: call('charges:revise')
+    revise: call('charges:revise'),
+    codeHints: call('charges:codeHints')
   },
   bundles: {
     list: call('bundles:list'),

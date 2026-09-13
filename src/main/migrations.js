@@ -177,6 +177,33 @@ const migrations = [
       db.exec('ALTER TABLE invoices ADD COLUMN discount REAL NOT NULL DEFAULT 0');
       db.exec('ALTER TABLE invoice_lines ADD COLUMN discount REAL NOT NULL DEFAULT 0');
     }
+  },
+  {
+    version: 7,
+    name: 'HSN/SAC, inclusive pricing, deposits, invoice wording',
+    up: function (db) {
+      // Items: a code column, and a flag for prices quoted with GST inside
+      // them (the circular's "amount incl. GST" figure, or a product MRP).
+      db.exec("ALTER TABLE charges ADD COLUMN hsn_sac TEXT");
+      db.exec("ALTER TABLE charges ADD COLUMN price_includes_gst INTEGER NOT NULL DEFAULT 0");
+
+      // Lines copy the code and remember how they were priced. non_gst marks
+      // a refundable deposit: on the invoice and in the total, outside GST.
+      db.exec("ALTER TABLE invoice_lines ADD COLUMN hsn_sac TEXT");
+      db.exec("ALTER TABLE invoice_lines ADD COLUMN inclusive INTEGER NOT NULL DEFAULT 0");
+      db.exec("ALTER TABLE invoice_lines ADD COLUMN non_gst INTEGER NOT NULL DEFAULT 0");
+      db.exec("ALTER TABLE invoices ADD COLUMN non_gst_value REAL NOT NULL DEFAULT 0");
+
+      db.exec("ALTER TABLE distributor ADD COLUMN tagline TEXT");
+      db.exec("ALTER TABLE distributor ADD COLUMN jurisdiction TEXT");
+      db.exec("UPDATE distributor SET tagline = 'Authorised Distributor for Bharat Gas' WHERE tagline IS NULL");
+
+      // Seeded charges on existing installs get the same SAC codes a fresh
+      // install would. Anything the distributor typed themselves is left alone.
+      const codes = require('./seed').SEED;
+      const set = db.prepare('UPDATE charges SET hsn_sac = ? WHERE description = ? AND hsn_sac IS NULL');
+      for (const row of codes) if (row.hsn_sac) set.run(row.hsn_sac, row.description);
+    }
   }
 ];
 

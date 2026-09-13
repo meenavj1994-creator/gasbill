@@ -29,6 +29,7 @@
           <select id="n-kind">
             <option value="service">Service charge</option>
             <option value="product">Product — hose, hot plate, and the like</option>
+            <option value="deposit">Deposit — refundable, no GST</option>
           </select>
         </div>
         <div class="field">
@@ -38,7 +39,7 @@
       </div>
       <div class="field-grid">
         <div class="field">
-          <label for="n-amount">Amount before tax</label>
+          <label for="n-amount">Amount</label>
           <input id="n-amount" type="number" min="0" step="0.01" />
         </div>
         <div class="field">
@@ -46,6 +47,17 @@
           <input id="n-rate" type="number" min="0" max="100" step="0.5" value="18" />
         </div>
       </div>
+      <div class="field-grid">
+        <div class="field">
+          <label for="n-code">HSN / SAC code</label>
+          <input id="n-code" list="code-hints" placeholder="e.g. 4009" maxlength="8" />
+        </div>
+        <label class="check-row" for="n-incl">
+          <input id="n-incl" type="checkbox" />
+          <span>Amount includes GST<small>Tick when the figure is quoted with tax inside it — the circular's "incl. GST" column, or a product MRP.</small></span>
+        </label>
+      </div>
+      <datalist id="code-hints"></datalist>
       <p class="error" id="new-error" hidden></p>
       <div class="actions">
         <button id="cancel-new" type="button">Cancel</button>
@@ -59,6 +71,16 @@
     <h2 class="group-head" id="products-head">Products</h2>
     <ul class="charge-list" id="product-list"></ul>
     <p class="empty" id="products-empty">No products yet. Add a hose or a hot plate with New item.</p>
+
+    <h2 class="group-head" id="deposits-head">Deposits</h2>
+    <ul class="charge-list" id="deposit-list"></ul>
+    <p class="empty" id="deposits-empty">No deposits yet. A cylinder or regulator security deposit goes here — it prints on the invoice and stays outside GST.</p>
+
+    <details class="code-ref">
+      <summary>Common HSN and SAC codes</summary>
+      <table class="code-table" id="code-table"></table>
+      <p class="hint">Four-digit HSN is enough for turnover under 5 crore. All of these are at 18%. Confirm with your CA before the first invoice.</p>
+    </details>
 
     <div class="sheet-head" style="margin-top:34px">
       <h1>Sets</h1>

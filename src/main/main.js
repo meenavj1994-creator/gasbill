@@ -226,6 +226,7 @@ handle('branding:defaultLogo', function () {
 handle('charges:active', function () { return repo.activeCharges(); });
 handle('charges:all', function () { return repo.allCharges(); });
 handle('charges:add', function (c) { return repo.addCharge(c); });
+handle('charges:codeHints', function () { return require('./seed').CODE_HINTS; });
 handle('charges:revise', function (id, next) { return repo.reviseCharge(id, next); });
 
 handle('bundles:list', function () { return repo.listBundles(); });

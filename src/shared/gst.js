@@ -107,26 +107,55 @@ function apportionDiscount(grossValues, discount) {
 /* Discount is applied to the value *before* tax and pushed down into each
    line, because Section 15(3) only excludes a discount from taxable value
    when it is recorded on the invoice against the supply. A discount taken off
-   the grand total after tax would leave GST payable on money never collected. */
+   the grand total after tax would leave GST payable on money never collected.
+
+   Two kinds of line are priced differently:
+   - `inclusive` lines were quoted with GST inside the price (the circular's
+     "amount incl. GST" column, or a product MRP). The basic value is backed
+     out as price / (1 + rate) and the tax is the remainder, so the line's
+     total is the price the customer was quoted, to the paisa.
+   - `nonGst` lines are refundable deposits: they print, they add to the
+     total, and they are outside GST — not taxable, not exempt, not in the
+     return. They carry no discount either. */
 function computeInvoice(lines, supplierStateCode, placeOfSupplyCode, discount) {
   const intraState = supplierStateCode === placeOfSupplyCode;
   let taxable = 0;
   let cgst = 0;
   let sgst = 0;
   let igst = 0;
+  let nonGst = 0;
   const buckets = new Map();
 
-  const grossValues = lines.map(function (line) {
+  const quoted = lines.map(function (line) {
     return round2((Number(line.qty) || 0) * (Number(line.rate) || 0));
   });
-  const gross = round2(grossValues.reduce(function (a, b) { return a + b; }, 0));
+  // Basic (pre-tax) value of each GST line; zero for deposits so they take
+  // no share of the discount.
+  const basics = lines.map(function (line, i) {
+    if (line.nonGst) return 0;
+    const r = Number(line.gstRate) || 0;
+    return line.inclusive ? round2(quoted[i] / (1 + r / 100)) : quoted[i];
+  });
+  const gross = round2(basics.reduce(function (a, b) { return a + b; }, 0));
   discount = round2(Math.min(Math.max(Number(discount) || 0, 0), gross));
-  const shares = apportionDiscount(grossValues, discount);
+  const shares = apportionDiscount(basics, discount);
 
   const priced = lines.map(function (line, i) {
-    const gstRate = Number(line.gstRate) || 0;
-    const lineTotal = round2(grossValues[i] - shares[i]);
-    const tax = round2(lineTotal * gstRate / 100);
+    const gstRate = line.nonGst ? 0 : (Number(line.gstRate) || 0);
+
+    if (line.nonGst) {
+      nonGst += quoted[i];
+      return Object.assign({}, line, {
+        gross: quoted[i], discount: 0, lineTotal: quoted[i], taxAmount: 0,
+        cgst: 0, sgst: 0, igst: 0, lineWithTax: quoted[i], gstRate: 0
+      });
+    }
+
+    const lineTotal = round2(basics[i] - shares[i]);
+    // Undiscounted inclusive lines land exactly on the quoted price.
+    const tax = (line.inclusive && shares[i] === 0)
+      ? round2(quoted[i] - basics[i])
+      : round2(lineTotal * gstRate / 100);
 
     if (!buckets.has(gstRate)) {
       buckets.set(gstRate, { rate: gstRate, taxable: 0, cgst: 0, sgst: 0, igst: 0 });
@@ -151,7 +180,7 @@ function computeInvoice(lines, supplierStateCode, placeOfSupplyCode, discount) {
       bucket.igst += tax;
     }
     return Object.assign({}, line, {
-      gross: grossValues[i],
+      gross: basics[i],
       discount: shares[i],
       lineTotal,
       taxAmount: tax,
@@ -179,12 +208,13 @@ function computeInvoice(lines, supplierStateCode, placeOfSupplyCode, discount) {
   cgst = round2(cgst);
   sgst = round2(sgst);
   igst = round2(igst);
+  nonGst = round2(nonGst);
 
-  const beforeRounding = round2(taxable + cgst + sgst + igst);
+  const beforeRounding = round2(taxable + cgst + sgst + igst + nonGst);
   const total = Math.round(beforeRounding);
   const rounding = round2(total - beforeRounding);
 
-  return { lines: priced, intraState, gross, discount, taxable, cgst, sgst, igst, byRate, beforeRounding, rounding, total };
+  return { lines: priced, intraState, gross, discount, taxable, cgst, sgst, igst, nonGst, byRate, beforeRounding, rounding, total };
 }
 
 /* The rate-wise breakup for an invoice already saved. Nothing stores it, but
@@ -195,6 +225,7 @@ function taxBreakupFromLines(lines, intraState) {
   const buckets = new Map();
 
   for (const line of lines || []) {
+    if (line.non_gst) continue;
     const rate = Number(line.gst_rate) || 0;
     if (!buckets.has(rate)) {
       buckets.set(rate, { rate: rate, taxable: 0, cgst: 0, sgst: 0, igst: 0 });

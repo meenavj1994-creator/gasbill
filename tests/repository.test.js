@@ -473,4 +473,59 @@ test('listInvoices filters by date and searches number, name and consumer', func
   assert.strictEqual(repo.listInvoices({}).length, 2);
 });
 
+console.log('\nCodes, inclusive flag and deposits on file');
+
+test('charges carry HSN/SAC and the inclusive flag; deposits are forced to 0%', function () {
+  const { repo } = freshRepo();
+  const hose = repo.addCharge({ description: 'Suraksha hose', base_amount: 190, gst_rate: 18,
+    effective_from: '2026-04-01', kind: 'product', hsn_sac: '4009', price_includes_gst: 1 });
+  assert.strictEqual(hose.hsn_sac, '4009');
+  assert.strictEqual(hose.price_includes_gst, 1);
+  const dep = repo.addCharge({ description: 'Cylinder deposit', base_amount: 2200, gst_rate: 18,
+    effective_from: '2026-04-01', kind: 'deposit', price_includes_gst: 1 });
+  assert.strictEqual(dep.gst_rate, 0);
+  assert.strictEqual(dep.price_includes_gst, 0);
+  const revised = repo.reviseCharge(hose.id, { base_amount: 200, effective_from: '2026-05-01' });
+  assert.strictEqual(revised.hsn_sac, '4009', 'revision dropped the code');
+  assert.strictEqual(revised.price_includes_gst, 1, 'revision dropped the inclusive flag');
+});
+
+test('seeded charges carry SAC codes', function () {
+  const { repo } = freshRepo();
+  const { seedCharges } = require('../src/main/seed');
+  seedCharges(repo);
+  const dgcc = repo.activeCharges().find(function (c) { return /DGCC/.test(c.description); });
+  assert.strictEqual(dgcc.hsn_sac, '998599');
+});
+
+test('an invoice stores codes, pricing basis and deposits, and reports leave deposits out', function () {
+  const { repo } = freshRepo();
+  const inv = repo.saveInvoice(customer({ invoice_date: '2026-09-03', lines: [
+    { description: 'DGCC', qty: 1, rate: 59, gstRate: 18, inclusive: true, hsnSac: '998599' },
+    { description: 'Deposit', qty: 1, rate: 258.58, nonGst: true }
+  ] }));
+  assert.strictEqual(inv.taxable_value, 50);
+  assert.strictEqual(inv.non_gst_value, 258.58);
+  assert.strictEqual(inv.total, 318);
+  const dgcc = inv.lines.find(function (l) { return l.description === 'DGCC'; });
+  assert.strictEqual(dgcc.hsn_sac, '998599');
+  assert.strictEqual(dgcc.inclusive, 1);
+  const dep = inv.lines.find(function (l) { return l.description === 'Deposit'; });
+  assert.strictEqual(dep.non_gst, 1);
+  assert.strictEqual(dep.line_total, 258.58);
+
+  const reports = require('../src/main/reports');
+  const b2cs = reports.b2csSummary([inv]);
+  const taxable = b2cs.reduce(function (a, r) { return a + Number(r['Taxable value']); }, 0);
+  assert.strictEqual(taxable, 50);
+  assert.ok(!b2cs.some(function (r) { return Number(r['Rate (%)']) === 0; }), 'deposit leaked into B2CS as 0%');
+});
+
+test('distributor wording round-trips', function () {
+  const { repo } = freshRepo();
+  const d = repo.getDistributor();
+  repo.saveDistributor(Object.assign({}, d, { tagline: 'Authorised Distributor for Bharat Gas', jurisdiction: 'Subject to Ujjain jurisdiction' }));
+  assert.strictEqual(repo.getDistributor().jurisdiction, 'Subject to Ujjain jurisdiction');
+});
+
 console.log('\n' + passed + ' passed\n');

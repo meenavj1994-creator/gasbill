@@ -106,8 +106,8 @@
       <div class="setup-section-head">
         <span class="setup-num">4</span>
         <div>
-          <div class="setup-section-title">Customer acknowledgement</div>
-          <p class="setup-section-desc">Printed on the distributor copy only, above the customer's signature.</p>
+          <div class="setup-section-title">Invoice wording</div>
+          <p class="setup-section-desc">The acknowledgement prints on the distributor copy only, above the customer's signature. The other two lines print on both copies.</p>
         </div>
       </div>
 
@@ -115,6 +115,16 @@
         <label for="ack">Acknowledgement wording</label>
         <input id="ack" value="I confirm the service described above was carried out at my premises to my satisfaction, and that I have received the original of this invoice." />
         <p class="hint">Have your CA check this wording. It is what the customer signs against.</p>
+      </div>
+      <div class="field">
+        <label for="tagline">Line under the agency name</label>
+        <input id="tagline" value="Authorised Distributor for Bharat Gas" />
+        <p class="hint">Leave blank to leave it off.</p>
+      </div>
+      <div class="field">
+        <label for="jurisdiction">Footer line</label>
+        <input id="jurisdiction" placeholder="Subject to Ujjain jurisdiction" />
+        <p class="hint">Optional. Prints small at the foot of every copy.</p>
       </div>
     </section>
 

@@ -84,6 +84,9 @@ async function loadForEdit(id) {
       qty: l.qty,
       rate: l.rate,
       gstRate: l.gst_rate,
+      hsnSac: l.hsn_sac || null,
+      inclusive: !!l.inclusive,
+      nonGst: !!l.non_gst,
       needsConfirmation: !!(current && current.needs_confirmation)
     };
   });
@@ -197,16 +200,17 @@ function populateChargeSelect() {
      distributor thinks of them separately, so they get their own groups. */
   const groups = [
     ['Service charges', 'service'],
-    ['Products', 'product']
+    ['Products', 'product'],
+    ['Deposits', 'deposit']
   ];
 
   for (const group of groups) {
     const matching = charges
       .map(function (charge, index) { return { charge: charge, index: index }; })
       .filter(function (entry) {
-        return group[1] === 'product'
-          ? entry.charge.kind === 'product'
-          : entry.charge.kind !== 'product';
+        const kind = entry.charge.kind === 'product' || entry.charge.kind === 'deposit'
+          ? entry.charge.kind : 'service';
+        return kind === group[1];
       });
     if (!matching.length) continue;
 
@@ -372,6 +376,9 @@ function addLine(charge) {
     qty: 1,
     rate: charge.base_amount,
     gstRate: charge.gst_rate,
+    hsnSac: charge.hsn_sac || null,
+    inclusive: !!charge.price_includes_gst,
+    nonGst: charge.kind === 'deposit',
     needsConfirmation: !!charge.needs_confirmation
   });
 
@@ -477,6 +484,7 @@ async function recalc() {
     totals = null;
     $('t-gross').textContent = '0.00';
     $('t-taxable').textContent = '0.00';
+    $('t-deposits-row').hidden = true;
     $('t-rounding').textContent = '0.00';
     renderTaxRows([], true);
     animateTotal(0);
@@ -487,6 +495,8 @@ async function recalc() {
   totals = await unwrap(window.api.compute(lines, distributor.state_code, distributor.state_code, discountValue()));
   $('t-gross').textContent = money(totals.gross);
   $('t-taxable').textContent = money(totals.taxable);
+  $('t-deposits').textContent = money(totals.nonGst);
+  $('t-deposits-row').hidden = !(totals.nonGst > 0);
   renderTaxRows(totals.byRate, totals.intraState);
   $('t-rounding').textContent = (totals.rounding >= 0 ? '+' : '') + money(totals.rounding);
   animateTotal(totals.total);

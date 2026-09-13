@@ -31,6 +31,7 @@ function b2csSummary(invoices) {
   for (const inv of invoices) {
     if (inv.customer_gstin) continue;
     for (const line of inv.lines) {
+      if (line.non_gst) continue;
       const key = inv.place_of_supply_code + '|' + line.gst_rate;
       if (!buckets.has(key)) {
         buckets.set(key, {
@@ -73,6 +74,7 @@ function b2bDetail(invoices) {
   for (const inv of invoices) {
     if (!inv.customer_gstin) continue;
     for (const line of inv.lines) {
+      if (line.non_gst) continue;
       rows.push({
         'Recipient GSTIN': inv.customer_gstin,
         'Recipient name': inv.customer_name,
@@ -94,6 +96,7 @@ function chargeSummary(invoices) {
 
   for (const inv of invoices) {
     for (const line of inv.lines) {
+      if (line.non_gst) continue;
       const key = line.description + '|' + line.gst_rate;
       if (!buckets.has(key)) {
         buckets.set(key, {

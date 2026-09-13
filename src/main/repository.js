@@ -6,8 +6,21 @@ const DEFAULT_ACK = 'I confirm the service described above was carried out at my
   'to my satisfaction, and that I have received the original of this invoice.';
 
 function withDefaults(d) {
-  return Object.assign({ ack_text: DEFAULT_ACK }, d,
+  return Object.assign({ ack_text: DEFAULT_ACK, tagline: null, jurisdiction: null }, d,
     d.ack_text ? {} : { ack_text: DEFAULT_ACK });
+}
+
+/* A deposit carries no GST whatever was typed, and a price cannot "include"
+   tax it does not carry. */
+function normaliseCharge(c) {
+  const out = Object.assign({}, c);
+  out.hsn_sac = (out.hsn_sac || '').trim() || null;
+  out.price_includes_gst = out.price_includes_gst ? 1 : 0;
+  if (out.kind === 'deposit') {
+    out.gst_rate = 0;
+    out.price_includes_gst = 0;
+  }
+  return out;
 }
 
 function createRepository(db) {
@@ -22,14 +35,15 @@ function createRepository(db) {
         address=@address, gstin=@gstin, state_code=@state_code, phone=@phone,
         logo_path=@logo_path, certificate_path=@certificate_path,
         series_prefix=@series_prefix, backup_folder=@backup_folder,
-        setup_complete=@setup_complete, ack_text=@ack_text WHERE id=1`).run(withDefaults(d));
+        setup_complete=@setup_complete, ack_text=@ack_text,
+        tagline=@tagline, jurisdiction=@jurisdiction WHERE id=1`).run(withDefaults(d));
     } else {
       db.prepare(`INSERT INTO distributor (id, trade_name, legal_name, address, gstin,
         state_code, phone, logo_path, certificate_path, series_prefix, backup_folder,
-        setup_complete, ack_text)
+        setup_complete, ack_text, tagline, jurisdiction)
         VALUES (1, @trade_name, @legal_name, @address, @gstin, @state_code, @phone,
         @logo_path, @certificate_path, @series_prefix, @backup_folder, @setup_complete,
-        @ack_text)`).run(withDefaults(d));
+        @ack_text, @tagline, @jurisdiction)`).run(withDefaults(d));
     }
     return getDistributor();
   }
@@ -43,10 +57,11 @@ function createRepository(db) {
   }
 
   function addCharge(c) {
+    const row = normaliseCharge(Object.assign({ needs_confirmation: 0, kind: 'service' }, c));
     const info = db.prepare(`INSERT INTO charges (description, base_amount, gst_rate,
-      effective_from, is_active, needs_confirmation, kind)
-      VALUES (@description, @base_amount, @gst_rate, @effective_from, 1, @needs_confirmation, @kind)`)
-      .run(Object.assign({ needs_confirmation: 0, kind: 'service' }, c));
+      effective_from, is_active, needs_confirmation, kind, hsn_sac, price_includes_gst)
+      VALUES (@description, @base_amount, @gst_rate, @effective_from, 1, @needs_confirmation,
+      @kind, @hsn_sac, @price_includes_gst)`).run(row);
     return db.prepare('SELECT * FROM charges WHERE id = ?').get(info.lastInsertRowid);
   }
 
@@ -57,15 +72,19 @@ function createRepository(db) {
     db.prepare('UPDATE charges SET is_active = 0, superseded_on = ? WHERE id = ?')
       .run(next.effective_from, id);
 
+    const row = normaliseCharge({
+      description: next.description || old.description,
+      base_amount: next.base_amount,
+      gst_rate: next.gst_rate == null ? old.gst_rate : next.gst_rate,
+      effective_from: next.effective_from,
+      kind: next.kind || old.kind || 'service',
+      hsn_sac: next.hsn_sac === undefined ? old.hsn_sac : next.hsn_sac,
+      price_includes_gst: next.price_includes_gst === undefined ? old.price_includes_gst : next.price_includes_gst
+    });
     const info = db.prepare(`INSERT INTO charges (description, base_amount, gst_rate,
-      effective_from, is_active, needs_confirmation, replaces_id, kind)
-      VALUES (?, ?, ?, ?, 1, 0, ?, ?)`)
-      .run(next.description || old.description,
-           next.base_amount,
-           next.gst_rate == null ? old.gst_rate : next.gst_rate,
-           next.effective_from,
-           id,
-           next.kind || old.kind || 'service');
+      effective_from, is_active, needs_confirmation, replaces_id, kind, hsn_sac, price_includes_gst)
+      VALUES (@description, @base_amount, @gst_rate, @effective_from, 1, 0, @replaces_id, @kind,
+      @hsn_sac, @price_includes_gst)`).run(Object.assign(row, { replaces_id: id }));
 
     return db.prepare('SELECT * FROM charges WHERE id = ?').get(info.lastInsertRowid);
   });
@@ -142,10 +161,11 @@ function createRepository(db) {
 
     const info = db.prepare(`INSERT INTO invoices (invoice_no, fy_label, invoice_date, consumer_no,
       customer_name, customer_address, customer_gstin, place_of_supply, place_of_supply_code,
-      reverse_charge, discount, taxable_value, cgst, sgst, igst, rounding, total, amount_in_words, status, created_at)
+      reverse_charge, discount, taxable_value, cgst, sgst, igst, non_gst_value, rounding, total,
+      amount_in_words, status, created_at)
       VALUES (@invoice_no, @fy_label, @invoice_date, @consumer_no, @customer_name, @customer_address,
       @customer_gstin, @place_of_supply, @place_of_supply_code, 0, @discount, @taxable_value, @cgst, @sgst,
-      @igst, @rounding, @total, @amount_in_words, 'issued', @created_at)`).run({
+      @igst, @non_gst_value, @rounding, @total, @amount_in_words, 'issued', @created_at)`).run({
       invoice_no: invoiceNo,
       fy_label: fy.label,
       invoice_date: gst.localDate(date),
@@ -160,6 +180,7 @@ function createRepository(db) {
       cgst: computed.cgst,
       sgst: computed.sgst,
       igst: computed.igst,
+      non_gst_value: computed.nonGst,
       rounding: computed.rounding,
       total: computed.total,
       amount_in_words: gst.amountInWords(computed.total),
@@ -167,12 +188,13 @@ function createRepository(db) {
     });
 
     const lineStmt = db.prepare(`INSERT INTO invoice_lines (invoice_id, description,
-      qty, rate, gst_rate, discount, line_total, tax_amount)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`);
+      qty, rate, gst_rate, discount, line_total, tax_amount, hsn_sac, inclusive, non_gst)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
 
     for (const line of computed.lines) {
       lineStmt.run(info.lastInsertRowid, line.description,
-        line.qty, line.rate, line.gstRate, line.discount, line.lineTotal, line.taxAmount);
+        line.qty, line.rate, line.gstRate, line.discount, line.lineTotal, line.taxAmount,
+        line.hsnSac || null, line.inclusive ? 1 : 0, line.nonGst ? 1 : 0);
     }
 
     return getInvoice(info.lastInsertRowid);

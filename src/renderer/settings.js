@@ -48,6 +48,8 @@ async function load() {
   $('phone').value = distributor.phone || '';
   $('prefix').value = distributor.series_prefix || '';
   $('ack').value = distributor.ack_text || '';
+  $('tagline').value = distributor.tagline || '';
+  $('jurisdiction').value = distributor.jurisdiction || '';
 
   if (distributor.logo_path) setLogo(distributor.logo_path);
 
@@ -156,6 +158,8 @@ $('save').addEventListener('click', async function () {
     certificate_path: distributor.certificate_path,
     series_prefix: $('prefix').value.trim().toUpperCase(),
     ack_text: $('ack').value.trim() || null,
+    tagline: $('tagline').value.trim() || null,
+    jurisdiction: $('jurisdiction').value.trim() || null,
     backup_folder: backupFolder,
     setup_complete: 1
   }));

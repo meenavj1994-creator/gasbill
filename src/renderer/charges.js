@@ -16,10 +16,13 @@ async function render() {
     return a.description.localeCompare(b.description);
   });
 
-  renderGroup($('charge-list'), active.filter(function (c) { return c.kind !== 'product'; }));
+  renderGroup($('charge-list'), active.filter(function (c) { return c.kind !== 'product' && c.kind !== 'deposit'; }));
   const products = active.filter(function (c) { return c.kind === 'product'; });
   renderGroup($('product-list'), products);
   $('products-empty').hidden = products.length > 0;
+  const deposits = active.filter(function (c) { return c.kind === 'deposit'; });
+  renderGroup($('deposit-list'), deposits);
+  $('deposits-empty').hidden = deposits.length > 0;
 
   await renderSets(active);
 }
@@ -42,7 +45,12 @@ function renderGroup(list, items) {
 
     const meta = document.createElement('div');
     meta.className = 'charge-meta';
-    meta.textContent = c.gst_rate + '% · from ' + c.effective_from;
+    const bits = [];
+    if (c.kind === 'deposit') bits.push('No GST');
+    else bits.push(c.gst_rate + '%' + (c.price_includes_gst ? ' included in amount' : ''));
+    if (c.hsn_sac) bits.push((c.kind === 'product' ? 'HSN ' : 'SAC ') + c.hsn_sac);
+    bits.push('from ' + c.effective_from);
+    meta.textContent = bits.join(' · ');
 
     const row = document.createElement('div');
     row.className = 'charge-actions';
@@ -109,14 +117,28 @@ function openRevise(charge) {
   taxRate.max = '100';
   taxRate.value = String(charge.gst_rate);
 
+  const code = document.createElement('input');
+  code.value = charge.hsn_sac || '';
+  code.maxLength = 8;
+  code.setAttribute('list', 'code-hints');
+
+  const incl = document.createElement('input');
+  incl.type = 'checkbox';
+  incl.checked = !!charge.price_includes_gst;
+  const inclRow = document.createElement('label');
+  inclRow.className = 'check-row';
+  const inclText = document.createElement('span');
+  inclText.textContent = 'Amount includes GST';
+  inclRow.append(incl, inclText);
+
   const kind = document.createElement('select');
-  [['service', 'Service charge'], ['product', 'Product']].forEach(function (pair) {
+  [['service', 'Service charge'], ['product', 'Product'], ['deposit', 'Deposit — no GST']].forEach(function (pair) {
     const option = document.createElement('option');
     option.value = pair[0];
     option.textContent = pair[1];
     kind.appendChild(option);
   });
-  kind.value = charge.kind === 'product' ? 'product' : 'service';
+  kind.value = charge.kind || 'service';
 
   const from = document.createElement('input');
   from.type = 'date';
@@ -159,6 +181,8 @@ function openRevise(charge) {
       base_amount: value,
       gst_rate: rate,
       kind: kind.value,
+      hsn_sac: code.value.trim() || null,
+      price_includes_gst: incl.checked ? 1 : 0,
       effective_from: from.value || new Date().toISOString().slice(0, 10)
     }));
     await render();
@@ -170,8 +194,8 @@ function openRevise(charge) {
 
   const grid = document.createElement('div');
   grid.className = 'field-grid';
-  grid.append(mk('Amount before tax', amount), mk('GST rate (%)', taxRate),
-    mk('Type', kind), mk('Effective from', from));
+  grid.append(mk('Amount', amount), mk('GST rate (%)', taxRate),
+    mk('Type', kind), mk('Effective from', from), mk('HSN / SAC code', code), inclRow);
 
   panel.append(note, mk('Description', desc), grid, error, actions);
 }
@@ -204,11 +228,14 @@ $('save-new').addEventListener('click', async function () {
     base_amount: amount,
     gst_rate: rate,
     kind: $('n-kind').value,
+    hsn_sac: $('n-code').value.trim() || null,
+    price_includes_gst: $('n-incl').checked ? 1 : 0,
     effective_from: $('n-from').value || new Date().toISOString().slice(0, 10),
     needs_confirmation: 0
   }));
 
-  ['n-desc', 'n-amount'].forEach(function (id) { $(id).value = ''; });
+  ['n-desc', 'n-amount', 'n-code'].forEach(function (id) { $(id).value = ''; });
+  $('n-incl').checked = false;
   $('new-form').hidden = true;
   await render();
 });
@@ -354,3 +381,34 @@ $('save-set').addEventListener('click', async function () {
 });
 
 render();
+
+/* A deposit carries no GST, so the rate and inclusive fields have nothing
+   to say for it. */
+$('n-kind').addEventListener('change', function () {
+  const deposit = $('n-kind').value === 'deposit';
+  $('n-rate').disabled = deposit;
+  $('n-incl').disabled = deposit;
+  if (deposit) { $('n-rate').value = '0'; $('n-incl').checked = false; }
+  else if ($('n-rate').value === '0') $('n-rate').value = '18';
+});
+
+(async function codeHints() {
+  const hints = await unwrap(window.api.charges.codeHints());
+  const list = $('code-hints');
+  const table = $('code-table');
+  for (const h of hints) {
+    const option = document.createElement('option');
+    option.value = h.code;
+    option.label = h.label;
+    list.appendChild(option);
+
+    const tr = document.createElement('tr');
+    const code = document.createElement('td');
+    code.className = 'code';
+    code.textContent = h.code;
+    const label = document.createElement('td');
+    label.textContent = h.label;
+    tr.append(code, label);
+    table.appendChild(tr);
+  }
+})();

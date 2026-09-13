@@ -242,4 +242,67 @@ test('formats the local calendar date, not the UTC one', function () {
   assert.strictEqual(g.localDate(new Date(2026, 0, 5, 0, 0)), '2026-01-05');
 });
 
+console.log('\nInclusive pricing and deposits');
+
+test('backs the basic value out of a GST-inclusive price and lands on it exactly', function () {
+  // The circular: Rs 50 + Rs 9 = Rs 59. A distributor typing 59 as inclusive
+  // must get 50 / 4.50 / 4.50, and the sample invoice's 190 tube gives 161.02.
+  const r = g.computeInvoice([
+    { qty: 1, rate: 59, gstRate: 18, inclusive: true },
+    { qty: 1, rate: 190, gstRate: 18, inclusive: true }
+  ], '23', '23');
+  assert.strictEqual(r.lines[0].lineTotal, 50);
+  assert.strictEqual(r.lines[0].taxAmount, 9);
+  assert.strictEqual(r.lines[0].lineWithTax, 59);
+  assert.strictEqual(r.lines[1].lineTotal, 161.02);
+  assert.strictEqual(r.lines[1].taxAmount, 28.98);
+  assert.strictEqual(r.lines[1].lineWithTax, 190);
+  assert.strictEqual(r.cgst, 18.99);
+  assert.strictEqual(r.sgst, 18.99);
+  assert.strictEqual(r.beforeRounding, 249);
+});
+
+test('an inclusive price with an awkward split still totals the quoted price', function () {
+  const r = g.computeInvoice([{ qty: 1, rate: 100, gstRate: 18, inclusive: true }], '23', '23');
+  assert.strictEqual(r.lines[0].lineTotal, 84.75);
+  assert.strictEqual(r.lines[0].taxAmount, 15.25);
+  assert.strictEqual(r.lines[0].lineWithTax, 100);
+});
+
+test('a deposit is in the total but outside taxable value, tax and discount', function () {
+  const r = g.computeInvoice([
+    { qty: 1, rate: 59, gstRate: 18, inclusive: true },
+    { qty: 1, rate: 258.58, gstRate: 0, nonGst: true },
+    { qty: 1, rate: 190, gstRate: 18, inclusive: true }
+  ], '23', '23', 10);
+  assert.strictEqual(r.nonGst, 258.58);
+  assert.strictEqual(r.lines[1].discount, 0);
+  assert.strictEqual(r.lines[1].taxAmount, 0);
+  assert.strictEqual(r.taxable, g.round2(50 + 161.02 - 10));
+  assert.strictEqual(r.byRate.length, 1, 'deposit must not create a 0% bucket');
+  assert.strictEqual(r.beforeRounding, g.round2(r.taxable + r.cgst + r.sgst + 258.58));
+});
+
+test('the sample distributor invoice reproduces to the paisa', function () {
+  // DGCC 59 incl, deposit 258.58, tube 190 incl → total 507.58, CGST/SGST 18.99.
+  const r = g.computeInvoice([
+    { qty: 1, rate: 59, gstRate: 18, inclusive: true },
+    { qty: 1, rate: 258.58, nonGst: true },
+    { qty: 1, rate: 190, gstRate: 18, inclusive: true }
+  ], '23', '23');
+  assert.strictEqual(r.beforeRounding, 507.58);
+  assert.strictEqual(r.cgst, 18.99);
+  assert.strictEqual(r.sgst, 18.99);
+  assert.strictEqual(r.total, 508);
+});
+
+test('taxBreakupFromLines skips deposit lines', function () {
+  const b = g.taxBreakupFromLines([
+    { gst_rate: 18, line_total: 100, tax_amount: 18 },
+    { gst_rate: 0, line_total: 500, tax_amount: 0, non_gst: 1 }
+  ], true);
+  assert.strictEqual(b.length, 1);
+  assert.strictEqual(b[0].taxable, 100);
+});
+
 console.log('\n' + passed + ' passed\n');

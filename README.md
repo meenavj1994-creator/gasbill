@@ -6,7 +6,7 @@ service charges. No server, no hosting, no internet needed to run.
 ## Running it
 
     npm install
-    npm test          # 86 fast tests
+    npm test          # 95 fast tests
     npm run test:all  # adds 3 OCR tests (~10s, needs eng.traineddata)
     npm start         # run the app
     npm run dist      # build the Windows NSIS installer
@@ -172,15 +172,23 @@ the bottom of a tax invoice would be far worse than an extra page.
 
 A5 and 80mm modes revert to one copy per page.
 
+The layout follows what distributors already hand out: logo, agency name,
+the "Authorised Distributor for Bharat Gas" line and address on top, TAX
+INVOICE at the right; customer and invoice particulars in two quiet columns;
+one table; one total. Thin rules, no filled bands, nothing labelled that
+does not need a label. The tagline and an optional footer line ("Subject to
+Ujjain jurisdiction") are set on the Settings page and print only if filled.
+
 **Tax is carried in the line columns**, not in rows under the table:
-Description | Qty | Basic | CGST (%) | SGST (%) | Total within the state, with a
-single IGST column across state lines. Basic is the line amount before tax;
+Description | HSN/SAC | Qty | Basic | CGST (%) | SGST (%) | Total within the
+state, with a single IGST column across state lines. Basic is the line amount before tax;
 when quantity is not one the unit rate appears in small type beside it, so
 there is no separate Rate column. Each tax cell shows the rate the same way.
 A footer row totals every column. Rule 46 asks for taxable value, rate and
-amount of tax; the columns give all three per line, and the bottom block
-stays at three rows (Basic, Total with GST, Round off) however many rates the
-invoice mixes.
+amount of tax; the columns give all three per line, and below the table
+there is only what the footer cannot say — the taxable value when it differs
+from the Basic column (a discount or a deposit), the deposit line, the
+rounding, and the total. A plain invoice has two rows there.
 
 A **Discount** column exists only on invoices that carry one, and so do the
 "Less discount" and "Taxable value" rows below. Each line's tax is computed on
@@ -337,6 +345,39 @@ line columns instead (see Printing). Either way an 18% hose and a 28% hot
 plate on one invoice are taxed at their own rates and shown that way — the
 old literal `CGST @ 9%` text would have printed the wrong rate on a tax
 document the moment anything was not 18%.
+
+## Prices with GST inside them
+
+The OMC circular lists each charge three ways — before GST, the GST, and the
+amount including GST (Rs 50 + Rs 9 = Rs 59 for the DGCC charge) — and a
+product has an MRP. Distributors bill the inclusive figure. So every item
+has an **Amount includes GST** switch: when it is on, the basic value is
+backed out as price ÷ (1 + rate) and the tax is the remainder, so the line
+total lands on the quoted price to the paisa (Rs 190 at 18% → 161.02 +
+28.98). The seeded charges are the circular's *before-GST* figures with the
+switch off; either way prints the same invoice.
+
+## Deposits
+
+A refundable security deposit — cylinder, regulator, DBTL advance — is not
+a supply. It is neither taxable nor exempt; it is simply outside GST. Items
+of kind `deposit` print on the invoice and add to the total, but stay out of
+the taxable value, carry no tax, take no share of a discount, and are
+skipped by every report sheet. A 0% "charge" would have done none of that
+correctly — it would have gone into B2CS as nil-rated.
+
+## HSN and SAC codes
+
+Each item has an optional code that prints in an **HSN/SAC** column.
+Four-digit HSN is enough at turnover under 5 crore. The charges page keeps
+a short reference list (`seed.js`'s `CODE_HINTS`) and offers it as
+autocomplete; the seeded service charges carry the SAC codes LPG
+distributors commonly use — 998739 installation, 998729 hotplate
+inspection and servicing (repair of other goods), 998599 documentation and
+administrative charges. Products: 4009 hose, 7321 hot plate, 8481
+regulator, 9613 lighter. All are 18% after the September 2025 slab change.
+Migration v7 writes these onto seeded charges that had none; anything the
+distributor typed is left alone.
 
 ## Discount
 

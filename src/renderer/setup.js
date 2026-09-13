@@ -170,6 +170,8 @@ $('finish').addEventListener('click', async function () {
     series_prefix: $('prefix').value.trim().toUpperCase() ||
       await unwrap(window.api.gst.seriesPrefix($('trade-name').value)),
     ack_text: $('ack').value.trim() || null,
+    tagline: $('tagline').value.trim() || null,
+    jurisdiction: $('jurisdiction').value.trim() || null,
     backup_folder: backupFolder,
     setup_complete: 1
   }));
