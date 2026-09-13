@@ -181,7 +181,19 @@ function buildMenu() {
   ]));
 }
 
+/* Preview PDFs are deleted when their window closes; anything left behind
+   by a crash or a kill is swept here. */
+function sweepPrintTemp() {
+  const dir = path.join(app.getPath('temp'), 'gasbill-print');
+  try {
+    for (const name of fs.readdirSync(dir)) {
+      try { fs.unlinkSync(path.join(dir, name)); } catch (e) { /* in use */ }
+    }
+  } catch (e) { /* no folder yet */ }
+}
+
 app.whenReady().then(function () {
+  sweepPrintTemp();
   openDatabase();
   buildMenu();
   createWindow();
@@ -363,8 +375,39 @@ ipcMain.handle('dialog:pickFolder', async function () {
   return result.canceled ? null : result.filePaths[0];
 });
 
-ipcMain.handle('print:invoice', function () {
-  win.webContents.print({ silent: false, printBackground: true });
+/* Electron has no print preview of its own: webContents.print() goes straight
+   to the Windows printer dialog, so the user commits to paper without seeing
+   the page. Instead the invoice is rendered to a PDF and shown in a preview
+   window — Chromium's PDF viewer, which carries its own Print and Save
+   buttons — so what prints is exactly what was looked at. The file is named
+   after the invoice so "Save" suggests something sensible, and is removed
+   when the window closes. */
+ipcMain.handle('print:invoice', async function (event, label) {
+  const pdf = await win.webContents.printToPDF({
+    printBackground: true,
+    preferCSSPageSize: true
+  });
+  const safe = String(label || 'invoice').replace(/[^A-Za-z0-9._-]+/g, '-');
+  const dir = path.join(app.getPath('temp'), 'gasbill-print');
+  fs.mkdirSync(dir, { recursive: true });
+  const file = path.join(dir, safe + '.pdf');
+  fs.writeFileSync(file, pdf);
+
+  const preview = new BrowserWindow({
+    parent: win,
+    width: 900,
+    height: Math.min(1100, Math.max(700, win.getBounds().height)),
+    title: 'Print — ' + (label || 'invoice'),
+    autoHideMenuBar: true,
+    backgroundColor: '#525659'
+  });
+  preview.setMenuBarVisibility(false);
+  // The PDF viewer would otherwise rename the window after the file.
+  preview.on('page-title-updated', function (e) { e.preventDefault(); });
+  preview.loadURL(require('url').pathToFileURL(file).href);
+  preview.on('closed', function () {
+    fs.unlink(file, function () { /* best effort */ });
+  });
   return { ok: true };
 });
 

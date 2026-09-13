@@ -89,7 +89,7 @@ async function reprint(id) {
   const inv = await unwrap(window.api.invoice.get(id));
   if (!inv) { toast('That invoice no longer exists.', 'bad'); return load(); }
   Printable.render(inv, distributor);
-  await window.api.print();
+  await window.api.print(inv.invoice_no);
 }
 
 /* The confirmation sits in the table right under the row, so what is about

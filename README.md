@@ -156,10 +156,19 @@ row and deactivates the old one; nothing is updated in place. The invoice
 counter increments inside the same transaction as the insert, so a failed save
 does not consume a number. A GSTIN read from a certificate is rejected unless
 its check digit passes, so a misread is never shown as if it were confirmed.
-Printing uses a `@media print` stylesheet and `window.print()`, not
-html2canvas, so text stays selectable and Save as PDF works from the dialog.
+Printing uses a `@media print` stylesheet rendered to PDF by
+`webContents.printToPDF`, not html2canvas, so text stays selectable.
 
 ## Printing
+
+Electron has no print preview: `webContents.print()` goes straight to the
+Windows printer dialog, and the user commits to paper without seeing the
+page. So Print renders the invoice to a PDF and opens it in a preview window
+— Chromium's PDF viewer, with its own Print and Save buttons — and what
+prints is exactly what was looked at. The file is named after the invoice so
+Save suggests `SH-2627-09-0002.pdf`, lives in the OS temp folder, and is
+deleted when the preview closes (leftovers from a crash are swept at
+startup).
 
 Both copies print on **one A4 sheet**, roughly half each, separated by a dashed
 cut line. Each half is `min-height: 134mm` — with 9mm page margins that leaves

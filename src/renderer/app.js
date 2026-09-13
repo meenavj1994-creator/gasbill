@@ -586,7 +586,7 @@ async function submit(thenPrint) {
 
   if (thenPrint) {
     await renderPrintable(saved);
-    await window.api.print();
+    await window.api.print(saved.invoice_no);
   }
   if (editing) {
     // Back to the list the correction started from.
