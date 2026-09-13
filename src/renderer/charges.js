@@ -64,6 +64,12 @@ function renderGroup(list, items) {
       badge.textContent = 'Active';
     }
     row.appendChild(badge);
+    if (!c.hsn_sac && c.kind !== 'deposit') {
+      const noCode = document.createElement('span');
+      noCode.className = 'badge badge-warn';
+      noCode.textContent = 'No HSN/SAC';
+      row.appendChild(noCode);
+    }
 
     const revise = document.createElement('button');
     revise.type = 'button';
@@ -121,6 +127,8 @@ function openRevise(charge) {
   code.value = charge.hsn_sac || '';
   code.maxLength = 8;
   code.setAttribute('list', 'code-hints');
+  const suggested = suggestCode(charge.description, charge.kind);
+  if (!charge.hsn_sac && suggested) code.placeholder = 'Suggested: ' + suggested;
 
   const incl = document.createElement('input');
   incl.type = 'checkbox';
@@ -412,3 +420,22 @@ $('n-kind').addEventListener('change', function () {
     table.appendChild(tr);
   }
 })();
+
+/* A placeholder, never a value: the distributor still has to type or pick
+   the code, but the likely one is in front of them. */
+function suggestCode(description, kind) {
+  const d = String(description || '').toLowerCase();
+  if (kind === 'deposit') return null;
+  if (/hose|tube|pipe/.test(d)) return '4009';
+  if (/hot ?plate|stove|burner|hob|cooking range/.test(d)) return '7321';
+  if (/regulator/.test(d)) return '8481';
+  if (/lighter/.test(d)) return '9613';
+  if (/dgcc|document|admin|visit and admin|termination/.test(d)) return '998599';
+  if (/install|demonstrat/.test(d)) return '998739';
+  if (/inspection|mechanic|servic|repair/.test(d)) return '998729';
+  return null;
+}
+$('n-desc').addEventListener('input', function () {
+  const s = suggestCode($('n-desc').value, $('n-kind').value);
+  $('n-code').placeholder = s ? 'Suggested: ' + s : 'e.g. 4009';
+});

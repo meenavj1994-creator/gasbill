@@ -601,7 +601,7 @@ async function submit(thenPrint) {
 /* The printed document is built by printable.js, shared with the Invoices
    page so a reprint is the same document as the original. */
 async function renderPrintable(invoice) {
-  Printable.render(invoice, distributor);
+  await Printable.render(invoice, distributor);
 }
 
 async function reset() {

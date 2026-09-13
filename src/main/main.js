@@ -220,7 +220,19 @@ function handle(channel, fn) {
   });
 }
 
-handle('distributor:get', function () { return repo.getDistributor(); });
+/* A distributor set up before the logo picker existed has no logo_path.
+   The bundled Bharatgas mark is the right default for this app, so it is
+   filled in here rather than printing a blank. Settings still lets them
+   pick their own. */
+function defaultLogoPath() {
+  const p = path.join(__dirname, '..', '..', 'resources', 'branding', 'bharatgas-logo.png');
+  return fs.existsSync(p) ? p : null;
+}
+handle('distributor:get', function () {
+  const d = repo.getDistributor();
+  if (d && !d.logo_path) d.logo_path = defaultLogoPath();
+  return d;
+});
 handle('distributor:save', function (d) { return repo.saveDistributor(d); });
 
 handle('app:version', function () { return app.getVersion(); });
@@ -230,10 +242,7 @@ handle('gst:sampleInvoiceNo', function (prefix, iso) {
   return gst.buildInvoiceNumber(prefix, iso ? new Date(iso) : new Date(), 1);
 });
 
-handle('branding:defaultLogo', function () {
-  const p = path.join(__dirname, '..', '..', 'resources', 'branding', 'bharatgas-logo.png');
-  return fs.existsSync(p) ? p : null;
-});
+handle('branding:defaultLogo', function () { return defaultLogoPath(); });
 
 handle('charges:active', function () { return repo.activeCharges(); });
 handle('charges:all', function () { return repo.allCharges(); });

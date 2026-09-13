@@ -99,6 +99,7 @@ function small(text) {
 function render(invoice, distributor) {
   const area = document.getElementById('print-area');
   area.innerHTML = '';
+  const pending = [];
 
   const intra = !(invoice.igst > 0);
   const discount = Number(invoice.discount) || 0;
@@ -119,7 +120,13 @@ function render(invoice, distributor) {
 
     const logo = node.querySelector('[data-logo]');
     if (logo && distributor.logo_path) {
-      logo.addEventListener('error', function () { logo.hidden = true; });
+      // printToPDF runs the moment render returns; an image still loading
+      // would print as nothing. Callers await the returned promise.
+      pending.push(new Promise(function (resolve) {
+        logo.addEventListener('load', resolve);
+        logo.addEventListener('error', function () { logo.hidden = true; resolve(); });
+        setTimeout(resolve, 1500);
+      }));
       logo.src = 'file:///' + distributor.logo_path.replace(/\\/g, '/');
       logo.hidden = false;
     }
@@ -248,6 +255,8 @@ function render(invoice, distributor) {
 
     area.appendChild(node);
   });
+
+  return Promise.all(pending);
 }
 
 return { render: render };

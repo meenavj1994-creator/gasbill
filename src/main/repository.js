@@ -23,6 +23,14 @@ function normaliseCharge(c) {
   return out;
 }
 
+/* An HSN/SAC code is a classification, not a price, so a line saved before
+   the item had one can borrow the item's current code for printing. Lines
+   that carry their own keep it. */
+const LINES_SQL = `SELECT l.*,
+    COALESCE(l.hsn_sac, (SELECT c.hsn_sac FROM charges c
+      WHERE c.description = l.description AND c.is_active = 1 LIMIT 1)) AS hsn_sac
+  FROM invoice_lines l WHERE l.invoice_id = ?`;
+
 function createRepository(db) {
   function getDistributor() {
     return db.prepare('SELECT * FROM distributor WHERE id = 1').get() || null;
@@ -266,7 +274,7 @@ function createRepository(db) {
   function getInvoice(id) {
     const inv = db.prepare('SELECT * FROM invoices WHERE id = ?').get(id);
     if (!inv) return null;
-    inv.lines = db.prepare('SELECT * FROM invoice_lines WHERE invoice_id = ?').all(id);
+    inv.lines = db.prepare(LINES_SQL).all(id);
     return inv;
   }
 
@@ -324,7 +332,7 @@ function createRepository(db) {
     const rows = db.prepare(`SELECT * FROM invoices WHERE invoice_date BETWEEN ? AND ?
       ORDER BY invoice_date, id`).all(fromDate, toDate);
     for (const r of rows) {
-      r.lines = db.prepare('SELECT * FROM invoice_lines WHERE invoice_id = ?').all(r.id);
+      r.lines = db.prepare(LINES_SQL).all(r.id);
     }
     return rows;
   }

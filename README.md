@@ -386,7 +386,15 @@ inspection and servicing (repair of other goods), 998599 documentation and
 administrative charges. Products: 4009 hose, 7321 hot plate, 8481
 regulator, 9613 lighter. All are 18% after the September 2025 slab change.
 Migration v7 writes these onto seeded charges that had none; anything the
-distributor typed is left alone.
+distributor typed is left alone — those show a **No HSN/SAC** badge on the
+charges page, and the revise form suggests a code from the description as
+a placeholder (hose → 4009, hot plate → 7321) that still has to be accepted.
+A line saved before its item had a code borrows the item's current code
+when printed (`LINES_SQL` in `repository.js`): a code is a classification,
+not a price, so this is safe where borrowing a rate would not be.
+
+A distributor record with no `logo_path` (set up before the picker existed)
+prints the bundled Bharatgas mark; `distributor:get` fills it in.
 
 ## Discount
 
