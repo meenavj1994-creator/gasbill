@@ -1,7 +1,12 @@
 'use strict';
 
 const $ = function (id) { return document.getElementById(id); };
-const STATE_CODE = '23';
+/* The state is whatever the GSTIN says it is — its first two characters —
+   not a constant. A distributor in Gujarat is as welcome as one in MP. */
+function stateFromGstin() {
+  const g = $('gstin').value.trim();
+  return /^[0-9]{2}/.test(g) ? g.slice(0, 2) : null;
+}
 let backupFolder = null;
 let logoPath = null;
 
@@ -39,7 +44,7 @@ $('cert-file').addEventListener('change', async function (e) {
   out.className = 'hint';
 
   try {
-    const parsed = await unwrap(window.api.certificate.read(window.api.pathOf(file), STATE_CODE));
+    const parsed = await unwrap(window.api.certificate.read(window.api.pathOf(file), null));
 
     // A scan that lost the GSTIN usually kept the names and address. Fill
     // those rather than discarding them, and send the cursor to the GSTIN.
@@ -74,10 +79,10 @@ async function checkGstin() {
   const out = $('gstin-result');
   if (!raw) { out.textContent = ''; out.className = 'hint'; return false; }
 
-  const r = await unwrap(window.api.validateGstin(raw, STATE_CODE));
+  const r = await unwrap(window.api.validateGstin(raw, null));
   if (r.valid) {
     $('gstin').value = r.gstin;
-    out.textContent = 'Checks out.';
+    out.textContent = 'Checks out — ' + (r.stateName || 'state ' + r.stateCode) + '.';
     out.className = 'hint ok';
     return true;
   }
@@ -163,7 +168,7 @@ $('finish').addEventListener('click', async function () {
     legal_name: $('legal-name').value.trim() || null,
     address: $('address').value.trim(),
     gstin: $('gstin').value.trim().toUpperCase(),
-    state_code: STATE_CODE,
+    state_code: stateFromGstin(),
     phone: $('phone').value.trim() || null,
     logo_path: logoPath,
     certificate_path: window.api.pathOf($('cert-file').files[0]),

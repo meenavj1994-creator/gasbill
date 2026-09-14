@@ -281,4 +281,63 @@ test('the FY period covers April to March', function () {
   assert.strictEqual(p.label, '2627');
 });
 
+console.log('\nScanned certificate, current REG-06 layout');
+
+// Fictional Gujarat agency, valid GSTIN 24ABQPZ7781K1ZJ, corrupted the way a
+// real three-page scan was: page 1 reads the 4 as d, Annexure A misreads the
+// check character, Annexure B misreads a PAN digit and drops a space in.
+const SCAN = [
+  'Government of India',
+  'Form GST REG-06',
+  'Registration Certificate i',
+  'Registration Number : 2dABQPZ7781K1ZJ',
+  'i Joogtame [our rT GA AGENCY',
+  "' Trade Name, if any KHODIYAR GAS AGENCY ; i",
+  'Constitution of Business Partnership',
+  'Radieas of Principal Place of |Fioor No.: SHOP NO 3',
+  'es Bullding No./Flat No.: SURVEY NO 45 PLOT 7',
+  'Name Of ER - NR BUS STAND',
+  'Road/Street: STATION ROAD',
+  'Nearby Landmark: OLD MARKET',
+  'City/Town/Village: Jetpur',
+  'District: Rajkot pr, I',
+  'State: Gujarat. | +',
+  'PIN Code: 360370,',
+  'Annexure A',
+  'Goods and Services Tax Identification Number: 24 ABQPZ7781K1Z8',
+  'Legal Name KHODIYAR GAS AGENCY',
+  'Trade Name, If any KHODIYAR GAS AGENCY',
+  'Annexure B',
+  'Goods and Services Tax Identification Number: 24 ABQ PZ7701K1ZJ',
+  'Legal Name KHODIYAR GAS AGENCY'
+].join('\n');
+
+test('recovers the GSTIN by combining three partial readings', function () {
+  const r = cert.parseCertificate(SCAN, {});
+  assert.strictEqual(r.ok, true, r.reason || '');
+  assert.strictEqual(r.fields.gstin, '24ABQPZ7781K1ZJ');
+  assert.strictEqual(r.fields.state_code, '24');
+});
+
+test('combineReadings refuses when nothing or more than one thing passes', function () {
+  assert.deepStrictEqual(cert.combineReadings(['24ABQPZ7781K1Z8']), [], 'a single reading is not a consensus');
+  assert.deepStrictEqual(cert.combineReadings(['24ABQPZ7781K1Z8', '24ABQPZ7781K1Z7']), []);
+});
+
+test('reads the structured address and cleans OCR debris off values', function () {
+  const r = cert.parseCertificate(SCAN, {});
+  assert.strictEqual(r.fields.trade_name, 'KHODIYAR GAS AGENCY');
+  assert.strictEqual(r.fields.legal_name, 'KHODIYAR GAS AGENCY');
+  assert.ok(/^SHOP NO 3, SURVEY NO 45 PLOT 7, NR BUS STAND, STATION ROAD, OLD MARKET, Jetpur/.test(r.fields.address), r.fields.address);
+  assert.ok(/Gujarat, 360370$/.test(r.fields.address), r.fields.address);
+  assert.strictEqual(cert.cleanValue('Gujarat. | +'), 'Gujarat');
+  assert.strictEqual(cert.cleanValue('SHREE BHARAT GAS AGENCY ; i'), 'SHREE BHARAT GAS AGENCY');
+  assert.strictEqual(cert.cleanValue('RAM & CO'), 'RAM & CO');
+});
+
+test('a certificate from any state is accepted when no state is expected', function () {
+  const r = cert.parseCertificate(SCAN, { expectedStateCode: null });
+  assert.strictEqual(r.ok, true);
+});
+
 console.log('\n' + passed + ' passed\n');

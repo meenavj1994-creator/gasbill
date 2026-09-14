@@ -565,7 +565,7 @@ async function submit(thenPrint) {
       customer_name: name,
       customer_address: $('customer-address').value.trim() || null,
       customer_gstin: $('customer-gstin').value.trim() || null,
-      place_of_supply: 'Madhya Pradesh',
+      place_of_supply: distributor.state_name,
       place_of_supply_code: distributor.state_code,
       invoice_date: editing ? editing.invoice_date : new Date().toISOString(),
       discount: discountValue(),

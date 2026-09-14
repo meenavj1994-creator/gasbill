@@ -70,7 +70,7 @@ async function checkGstin() {
   const out = $('gstin-result');
   if (!raw) { out.textContent = ''; out.className = 'hint'; return false; }
 
-  const r = await unwrap(window.api.validateGstin(raw, distributor.state_code));
+  const r = await unwrap(window.api.validateGstin(raw, null));
   if (r.valid) {
     $('gstin').value = r.gstin;
     out.textContent = 'Checks out.';
@@ -152,7 +152,7 @@ $('save').addEventListener('click', async function () {
     legal_name: $('legal-name').value.trim() || null,
     address: $('address').value.trim(),
     gstin: $('gstin').value.trim().toUpperCase(),
-    state_code: distributor.state_code,
+    state_code: $('gstin').value.trim().slice(0, 2) || distributor.state_code,
     phone: $('phone').value.trim() || null,
     logo_path: logoPath,
     certificate_path: distributor.certificate_path,

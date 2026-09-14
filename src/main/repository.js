@@ -181,7 +181,7 @@ function createRepository(db) {
       customer_name: payload.customer_name,
       customer_address: payload.customer_address || null,
       customer_gstin: payload.customer_gstin || null,
-      place_of_supply: payload.place_of_supply || 'Madhya Pradesh',
+      place_of_supply: payload.place_of_supply || gst.stateName(posCode) || d.state_code,
       place_of_supply_code: posCode,
       discount: computed.discount,
       taxable_value: computed.taxable,

@@ -15,7 +15,8 @@ contextBridge.exposeInMainWorld('api', {
   branding: { defaultLogo: call('branding:defaultLogo') },
   gst: {
     seriesPrefix: call('gst:seriesPrefix'),
-    sampleInvoiceNo: call('gst:sampleInvoiceNo')
+    sampleInvoiceNo: call('gst:sampleInvoiceNo'),
+    stateName: call('gst:stateName')
   },
   charges: {
     active: call('charges:active'),

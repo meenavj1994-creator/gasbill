@@ -6,7 +6,7 @@ service charges. No server, no hosting, no internet needed to run.
 ## Running it
 
     npm install
-    npm test          # 95 fast tests
+    npm test          # 101 fast tests
     npm run test:all  # adds 3 OCR tests (~10s, needs eng.traineddata)
     npm start         # run the app
     npm run dist      # build the Windows NSIS installer
@@ -273,6 +273,31 @@ check characters exactly as read. The check digit then has to pass as usual;
 repairing it until it did would prove nothing. Tokens are compared with
 internal spaces removed, so `1234F 178` and `1234F178` are the same
 candidate.
+
+A scanned REG-06 states the GSTIN three times — the certificate, Annexure A,
+Annexure B — and OCR tends to get a *different* character wrong in each, so
+no single reading passes yet every position was read right somewhere.
+`combineReadings` groups the repaired candidates by PAN, takes the set of
+characters seen at each position, and tests every combination; exactly one
+passing combination is accepted, none or several is reported as unreadable.
+The search is capped at 64 combinations because the check digit is a 1-in-36
+check and a wide search would eventually "find" something. This is what
+recovered a real Gujarat certificate that read `2dAFM…ZS`, `24AFM…Z8` and
+`24AFM…05…` on its three pages.
+
+The current REG-06 lays the address out as labelled parts, one per line —
+Floor No., Building No., Road/Street, Landmark, City, District, State, PIN —
+and OCR bends the labels ("Fioor No."). `structuredAddress` matches each
+loosely and joins the parts in order; `cleanValue` strips the debris OCR
+leaves at the ends of values ("Gujarat. | +"). Whatever it gets wrong is on
+screen to be corrected before saving.
+
+**The state comes from the GSTIN, never from a constant.** Setup used to
+hard-code Madhya Pradesh (state 23) and the billing screen printed it as
+place of supply. A Gujarat distributor's certificate was rejected as "wrong
+state" before it was even read properly. Now `state_code` is the GSTIN's
+first two characters, `gst.stateName` maps it, and place of supply follows
+the distributor.
 
 When the GSTIN still cannot be read, the names and address that *were* read
 are filled in anyway and the cursor goes to the GSTIN field — a scan that

@@ -305,4 +305,15 @@ test('taxBreakupFromLines skips deposit lines', function () {
   assert.strictEqual(b[0].taxable, 100);
 });
 
+console.log('\nState from the GSTIN');
+
+test('validateGstin names the state', function () {
+  const r = g.validateGstin('24ABQPZ7781K1ZJ', null);
+  assert.strictEqual(r.valid, true);
+  assert.strictEqual(r.stateCode, '24');
+  assert.strictEqual(r.stateName, 'Gujarat');
+  assert.strictEqual(g.stateName('23'), 'Madhya Pradesh');
+  assert.strictEqual(g.stateName('99'), null);
+});
+
 console.log('\n' + passed + ' passed\n');

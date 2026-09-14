@@ -231,8 +231,10 @@ function defaultLogoPath() {
 handle('distributor:get', function () {
   const d = repo.getDistributor();
   if (d && !d.logo_path) d.logo_path = defaultLogoPath();
+  if (d) d.state_name = gst.stateName(d.state_code) || d.state_code;
   return d;
 });
+handle('gst:stateName', function (code) { return gst.stateName(code); });
 handle('distributor:save', function (d) { return repo.saveDistributor(d); });
 
 handle('app:version', function () { return app.getVersion(); });

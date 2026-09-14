@@ -528,4 +528,16 @@ test('distributor wording round-trips', function () {
   assert.strictEqual(repo.getDistributor().jurisdiction, 'Subject to Ujjain jurisdiction');
 });
 
+console.log('\nPlace of supply follows the distributor');
+
+test('an invoice for a Gujarat distributor says Gujarat, not Madhya Pradesh', function () {
+  const { repo } = freshRepo();
+  const d = repo.getDistributor();
+  repo.saveDistributor(Object.assign({}, d, { gstin: '24ABQPZ7781K1ZJ', state_code: '24' }));
+  const inv = repo.saveInvoice(customer({ invoice_date: '2026-09-03', place_of_supply: null, place_of_supply_code: '24' }));
+  assert.strictEqual(inv.place_of_supply, 'Gujarat');
+  assert.strictEqual(inv.place_of_supply_code, '24');
+  assert.strictEqual(inv.igst, 0, 'intra-state must split CGST/SGST');
+});
+
 console.log('\n' + passed + ' passed\n');
