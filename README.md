@@ -40,6 +40,21 @@ unaffected by whichever build is currently on disk.
    are confirmed against the current territory circular.
 2. **Have a CA review** the printed invoice template and the B2CS sheet.
 
+## 32-bit Windows
+
+The installer is universal: one `GasBill Setup x.y.z.exe` carries both the
+64-bit and 32-bit runtimes and installs whichever the machine needs, so a
+single `latest.yml` serves every install and auto-update is unchanged. The
+price is size — about 254 MB against 130 for 64-bit alone; differential
+updates after the first are still small.
+
+Everything works on 32-bit except one thing: `@napi-rs/canvas`, which
+rasterises a *scanned PDF* for OCR, has no 32-bit build. Portal PDFs (text
+layer) and photos or JPG scans read as normal; a scanned PDF on a 32-bit
+machine gets a message saying to upload a photo instead, rather than a
+cryptic failure. `better-sqlite3` ships a prebuilt 32-bit binary for this
+Electron ABI, so no compiler is involved.
+
 ## Auto-update
 
 `package.json`'s `build.publish` points at

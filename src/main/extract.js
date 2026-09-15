@@ -129,7 +129,16 @@ async function extractText(filePath, options) {
       const text = await ocr(pages, traineddataDir);
       return { text: text, method: 'ocr' };
     } catch (err) {
-      return { text: '', method: 'failed', error: err.message };
+      // @napi-rs/canvas has no 32-bit build, so a scanned PDF cannot be
+      // rasterised on 32-bit Windows. Photos and JPG scans still read fine.
+      const noCanvas = process.arch === 'ia32' || /canvas/i.test(err.message);
+      return {
+        text: '',
+        method: 'failed',
+        error: noCanvas
+          ? 'This is a scanned PDF and scanned PDFs cannot be read on 32-bit Windows. Upload a photo or JPG of the certificate instead'
+          : err.message
+      };
     }
   }
 
