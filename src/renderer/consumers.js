@@ -9,27 +9,15 @@ async function unwrap(p) {
   return r.data;
 }
 
-const GUESSES = {
-  'm-no': ['consumer_no', 'consumerno', 'consumer no', 'consumer number', 'cons_no', 'cust_no'],
-  'm-name': ['cons_name', 'consumer name', 'name', 'customer name', 'consumer_name'],
-  'm-address': ['address1', 'address', 'addr', 'address_1'],
-  'm-mobile': ['mobile_no', 'mobile', 'phone', 'contact', 'mobile number']
+/* The main process finds the header row and works out which column holds
+   which field — see tabular.js. This file only shows what it decided and
+   lets it be overridden. */
+const FIELD_OF = {
+  'm-no': 'consumer_no',
+  'm-name': 'name',
+  'm-address': 'address',
+  'm-mobile': 'mobile'
 };
-
-function guessColumn(headers, id) {
-  const wanted = GUESSES[id];
-  for (const w of wanted) {
-    const hit = headers.find(function (h) {
-      return h.toLowerCase().replace(/[^a-z0-9]/g, '') === w.replace(/[^a-z0-9]/g, '');
-    });
-    if (hit) return hit;
-  }
-  for (const w of wanted) {
-    const hit = headers.find(function (h) { return h.toLowerCase().indexOf(w) >= 0; });
-    if (hit) return hit;
-  }
-  return '';
-}
 
 $('file').addEventListener('change', async function (e) {
   const file = e.target.files[0];
@@ -51,10 +39,13 @@ $('file').addEventListener('change', async function (e) {
     return;
   }
 
-  $('file-info').textContent = parsed.rows.length.toLocaleString('en-IN') + ' rows found.';
-  $('file-info').className = 'hint ok';
+  const where = parsed.headerRow > 1
+    ? ' Column headings found in row ' + parsed.headerRow + '.'
+    : (parsed.headerRow < 0 ? ' No heading row found, so columns are named by letter — pick them below.' : '');
+  $('file-info').textContent = parsed.rows.length.toLocaleString('en-IN') + ' rows found.' + where;
+  $('file-info').className = parsed.headerRow < 0 ? 'hint' : 'hint ok';
 
-  Object.keys(GUESSES).forEach(function (id) {
+  Object.keys(FIELD_OF).forEach(function (id) {
     const select = $(id);
     select.innerHTML = '';
     const blank = document.createElement('option');
@@ -68,10 +59,40 @@ $('file').addEventListener('change', async function (e) {
       option.textContent = h;
       select.appendChild(option);
     }
-    select.value = guessColumn(parsed.headers, id);
+    select.value = (parsed.guess && parsed.guess[FIELD_OF[id]]) || '';
   });
 
+  const missing = ['m-no', 'm-name'].filter(function (id) { return !$(id).value; });
+  if (missing.length) {
+    $('map-error').textContent = 'Could not tell which columns hold the consumer number and name. Pick them below.';
+    $('map-error').hidden = false;
+  } else {
+    $('map-error').hidden = true;
+  }
+
   $('mapping').hidden = false;
+  renderPreview();
+});
+
+/* The mapping was guessed, so show what it produces before anything is
+   written. Three rows is enough to catch a column off by one. */
+function renderPreview() {
+  const body = $('preview-rows');
+  body.innerHTML = '';
+  const cols = ['m-no', 'm-name', 'm-address', 'm-mobile'].map(function (id) { return $(id).value; });
+  for (const row of (parsed ? parsed.rows.slice(0, 3) : [])) {
+    const tr = document.createElement('tr');
+    for (const col of cols) {
+      const td = document.createElement('td');
+      td.textContent = col ? String(row[col] || '') : '—';
+      tr.appendChild(td);
+    }
+    body.appendChild(tr);
+  }
+}
+
+['m-no', 'm-name', 'm-address', 'm-mobile'].forEach(function (id) {
+  $(id).addEventListener('change', renderPreview);
 });
 
 $('run').addEventListener('click', async function () {

@@ -12,6 +12,7 @@ function invoiceRegister(invoices) {
       'Date': inv.invoice_date,
       'Consumer no': inv.consumer_no || '',
       'Customer name': inv.customer_name,
+      'Mobile': inv.customer_mobile || '',
       'Customer GSTIN': inv.customer_gstin || '',
       'Type': inv.customer_gstin ? 'B2B' : 'B2C',
       'Place of supply': inv.place_of_supply + ' (' + inv.place_of_supply_code + ')',

@@ -32,6 +32,7 @@ const TEMPLATE = `
         <div class="doc-kv"><span class="k">Name</span><span data-customer-name></span></div>
         <div class="doc-kv" data-address-row><span class="k">Address</span><span data-customer-address></span></div>
         <div class="doc-kv" data-consumer-row><span class="k">Cons no</span><span class="doc-mono" data-consumer-no></span></div>
+        <div class="doc-kv" data-mobile-row><span class="k">Mobile</span><span class="doc-mono" data-customer-mobile></span></div>
         <div class="doc-kv" data-gstin-row><span class="k">GSTIN</span><span class="doc-mono" data-customer-gstin></span></div>
       </div>
       <div class="doc-party doc-party-right">
@@ -144,6 +145,8 @@ function render(invoice, distributor) {
     show('[data-address-row]', !!invoice.customer_address);
     set('[data-consumer-no]', invoice.consumer_no);
     show('[data-consumer-row]', !!invoice.consumer_no);
+    set('[data-customer-mobile]', invoice.customer_mobile);
+    show('[data-mobile-row]', !!invoice.customer_mobile);
     set('[data-customer-gstin]', invoice.customer_gstin);
     show('[data-gstin-row]', !!invoice.customer_gstin);
     set('[data-place-of-supply]', invoice.place_of_supply + ' (' + invoice.place_of_supply_code + ')');

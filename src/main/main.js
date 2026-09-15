@@ -12,6 +12,7 @@ const { parseCertificate } = require('./certificate');
 const reports = require('./reports');
 const { extractText } = require('./extract');
 const XLSX = require('xlsx');
+const tabular = require('./tabular');
 const { autoUpdater } = require('electron-updater');
 
 let db;
@@ -280,9 +281,10 @@ handle('taxBreakup', function (lines, intraState) {
 handle('consumers:parseFile', function (filePath) {
   const wb = XLSX.readFile(filePath, { cellDates: false, raw: false });
   const sheet = wb.Sheets[wb.SheetNames[0]];
-  const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
-  const headers = rows.length ? Object.keys(rows[0]) : [];
-  return { headers: headers, rows: rows };
+  // As a matrix, not objects: sheet_to_json would take row 1 as the header,
+  // and a portal export usually opens with a title and a blank row or two.
+  const matrix = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', blankrows: true });
+  return tabular.readMatrix(matrix);
 });
 
 ipcMain.handle('certificate:read', async function (event, filePath, expectedStateCode) {

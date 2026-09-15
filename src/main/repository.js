@@ -168,11 +168,11 @@ function createRepository(db) {
     const computed = gst.computeInvoice(payload.lines, d.state_code, posCode, payload.discount);
 
     const info = db.prepare(`INSERT INTO invoices (invoice_no, fy_label, invoice_date, consumer_no,
-      customer_name, customer_address, customer_gstin, place_of_supply, place_of_supply_code,
+      customer_name, customer_address, customer_mobile, customer_gstin, place_of_supply, place_of_supply_code,
       reverse_charge, discount, taxable_value, cgst, sgst, igst, non_gst_value, rounding, total,
       amount_in_words, status, created_at)
       VALUES (@invoice_no, @fy_label, @invoice_date, @consumer_no, @customer_name, @customer_address,
-      @customer_gstin, @place_of_supply, @place_of_supply_code, 0, @discount, @taxable_value, @cgst, @sgst,
+      @customer_mobile, @customer_gstin, @place_of_supply, @place_of_supply_code, 0, @discount, @taxable_value, @cgst, @sgst,
       @igst, @non_gst_value, @rounding, @total, @amount_in_words, 'issued', @created_at)`).run({
       invoice_no: invoiceNo,
       fy_label: fy.label,
@@ -180,6 +180,7 @@ function createRepository(db) {
       consumer_no: payload.consumer_no || null,
       customer_name: payload.customer_name,
       customer_address: payload.customer_address || null,
+      customer_mobile: payload.customer_mobile || null,
       customer_gstin: payload.customer_gstin || null,
       place_of_supply: payload.place_of_supply || gst.stateName(posCode) || d.state_code,
       place_of_supply_code: posCode,
@@ -266,7 +267,7 @@ function createRepository(db) {
       const like = '%' + f.q + '%';
       args.push(like, like, like);
     }
-    return db.prepare(`SELECT id, invoice_no, invoice_date, consumer_no, customer_name, total, discount
+    return db.prepare(`SELECT id, invoice_no, invoice_date, consumer_no, customer_name, customer_mobile, total, discount
       FROM invoices ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
       ORDER BY invoice_date DESC, id DESC LIMIT 500`).all(...args);
   }

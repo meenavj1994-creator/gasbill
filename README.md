@@ -6,7 +6,7 @@ service charges. No server, no hosting, no internet needed to run.
 ## Running it
 
     npm install
-    npm test          # 101 fast tests
+    npm test          # 112 fast tests
     npm run test:all  # adds 3 OCR tests (~10s, needs eng.traineddata)
     npm start         # run the app
     npm run dist      # build the Windows NSIS installer
@@ -124,7 +124,8 @@ invoice can be corrected or removed from the Invoices page.
   validation, series prefix with a live length check, backup folder.
 - `charges.html` — charges, products and sets. Add, confirm and revise items,
   and group the ones that get billed together.
-- `consumers.html` — XLSX/CSV import with column mapping and guessed defaults.
+- `consumers.html` — XLSX/CSV import. Finds the heading row wherever it is,
+  maps the columns itself, and previews three rows before writing anything.
 - `invoices.html` — every invoice on file, filtered by month, financial year
   or custom dates, searchable by number, customer or consumer. Reprint, edit,
   delete.
@@ -464,6 +465,35 @@ credit note refuses to be deleted.
 Reprints use `printable.js`, the same renderer the billing screen uses right
 after save, so a reprint is the identical document rather than a second
 template drifting from the first.
+
+## Importing a consumer list
+
+Portal exports are not clean tables: a title, the agency name, a date range,
+sometimes a blank row, and only then the column headings — row 3, row 5,
+occasionally further down. `sheet_to_json` takes row 1 as the header, which
+gave columns called "LIST OF CONSUMERS" and `__EMPTY_2`, and nothing mapped.
+
+`tabular.js` reads the sheet as a matrix and scores every row in the first
+25 as a candidate heading row: recognised field names count most, then
+short texty cells, minus anything numeric, plus a bonus when the row below
+fills a similar number of columns. A row with figures and no recognisable
+field name is data, not a heading — without that rule the first row of a
+file with no headings at all gets eaten as one.
+
+When the headings are unrecognisable or absent the columns are named by
+letter and the *data* is read instead: ten digits starting 6-9 is a mobile,
+a long run of digits is a consumer number, two capitalised words is a name.
+Whatever it concludes, the screen says which row the headings came from and
+shows three rows exactly as they will be imported, so a column off by one
+is visible before anything is written.
+
+## Customer mobile
+
+Copied onto the invoice like every other customer particular, so changing a
+consumer's number later cannot alter a past invoice (migration v8). It is
+filled from the consumer record on lookup, editable per invoice, prints as
+a Mobile line when present, and is a column in the Invoices list and the
+register sheet.
 
 ## More than one machine at an agency
 

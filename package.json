@@ -1,11 +1,11 @@
 {
   "name": "gasbill",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Offline GST tax invoicing for LPG distributors",
   "main": "src/main/main.js",
   "scripts": {
     "start": "electron .",
-    "test": "node tests/gst.test.js && node tests/repository.test.js && node tests/reports.test.js",
+    "test": "node tests/gst.test.js && node tests/repository.test.js && node tests/reports.test.js && node tests/tabular.test.js",
     "dist": "electron-builder --win --publish always",
     "test:extract": "node tests/extract.test.js",
     "test:all": "npm test && npm run test:extract",

@@ -74,6 +74,7 @@ async function loadForEdit(id) {
   $('consumer-no').value = inv.consumer_no || '';
   $('customer-name').value = inv.customer_name || '';
   $('customer-address').value = inv.customer_address || '';
+  $('customer-mobile').value = inv.customer_mobile || '';
   $('customer-gstin').value = inv.customer_gstin || '';
   showManualEntry('');
   $('t-discount').value = inv.discount > 0 ? String(inv.discount) : '';
@@ -333,8 +334,10 @@ function applyConsumer(person) {
   $('consumer-no').value = person.consumer_no;
   $('customer-name').value = person.name || '';
   $('customer-address').value = person.address || '';
+  $('customer-mobile').value = person.mobile || '';
   $('card-name').textContent = person.name || '';
-  $('card-meta').textContent = person.address || 'No address on file';
+  $('card-meta').textContent = [person.address, person.mobile]
+    .filter(Boolean).join(' · ') || 'No address on file';
   $('customer-card').hidden = false;
   $('customer-fields').hidden = true;
   $('lookup-result').textContent = '';
@@ -564,6 +567,7 @@ async function submit(thenPrint) {
       consumer_no: $('consumer-no').value.trim() || null,
       customer_name: name,
       customer_address: $('customer-address').value.trim() || null,
+      customer_mobile: $('customer-mobile').value.trim() || null,
       customer_gstin: $('customer-gstin').value.trim() || null,
       place_of_supply: distributor.state_name,
       place_of_supply_code: distributor.state_code,
@@ -606,7 +610,7 @@ async function renderPrintable(invoice) {
 
 async function reset() {
   lines = [];
-  ['consumer-no', 'customer-name', 'customer-address', 'customer-gstin', 't-discount']
+  ['consumer-no', 'customer-name', 'customer-address', 'customer-mobile', 'customer-gstin', 't-discount']
     .forEach(function (id) { $(id).value = ''; });
   $('customer-card').hidden = true;
   $('customer-fields').hidden = true;

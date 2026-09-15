@@ -540,4 +540,23 @@ test('an invoice for a Gujarat distributor says Gujarat, not Madhya Pradesh', fu
   assert.strictEqual(inv.igst, 0, 'intra-state must split CGST/SGST');
 });
 
+console.log('\nCustomer mobile');
+
+test('the mobile is copied onto the invoice, like every other particular', function () {
+  const { repo } = freshRepo();
+  const inv = repo.saveInvoice(customer({ invoice_date: '2026-09-03', customer_mobile: '9876543210' }));
+  assert.strictEqual(inv.customer_mobile, '9876543210');
+  assert.strictEqual(repo.listInvoices({})[0].customer_mobile, '9876543210');
+  const reports = require('../src/main/reports');
+  assert.strictEqual(reports.invoiceRegister([inv])[0]['Mobile'], '9876543210');
+});
+
+test('an invoice without a mobile stores null, and the register shows blank', function () {
+  const { repo } = freshRepo();
+  const inv = repo.saveInvoice(customer({ invoice_date: '2026-09-03' }));
+  assert.strictEqual(inv.customer_mobile, null);
+  const reports = require('../src/main/reports');
+  assert.strictEqual(reports.invoiceRegister([inv])[0]['Mobile'], '');
+});
+
 console.log('\n' + passed + ' passed\n');

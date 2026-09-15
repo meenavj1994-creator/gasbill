@@ -204,6 +204,15 @@ const migrations = [
       const set = db.prepare('UPDATE charges SET hsn_sac = ? WHERE description = ? AND hsn_sac IS NULL');
       for (const row of codes) if (row.hsn_sac) set.run(row.hsn_sac, row.description);
     }
+  },
+  {
+    version: 8,
+    name: 'customer mobile on the invoice',
+    up: function (db) {
+      // Copied onto the invoice like every other customer particular, so a
+      // later change to the consumer record cannot alter a past invoice.
+      db.exec('ALTER TABLE invoices ADD COLUMN customer_mobile TEXT');
+    }
   }
 ];
 

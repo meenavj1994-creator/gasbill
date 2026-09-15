@@ -56,6 +56,7 @@ function rowFor(inv) {
     ['num', dmy(inv.invoice_date)],
     ['', inv.customer_name],
     ['num', inv.consumer_no || ''],
+    ['num', inv.customer_mobile || ''],
     ['num right', rupees(inv.total)]
   ];
   cells.forEach(function (c) {
@@ -101,7 +102,7 @@ function askDelete(tr, inv) {
   const row = document.createElement('tr');
   row.className = 'inv-confirm';
   const td = document.createElement('td');
-  td.colSpan = 6;
+  td.colSpan = 7;
   const box = document.createElement('div');
   box.className = 'row';
 
