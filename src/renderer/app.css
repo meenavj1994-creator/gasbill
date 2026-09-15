@@ -683,3 +683,43 @@ button:disabled { opacity: 0.55; cursor: default; }
 .code-table { border-collapse: collapse; margin-top: var(--space-2); }
 .code-table td { padding: 5px 14px 5px 0; border-bottom: 1px solid var(--rule-soft); }
 .code-table td.code { font-family: var(--mono); font-weight: 600; }
+
+/* Billing lines: one toolbar to add, one table to edit in place. */
+.line-toolbar { display: flex; gap: var(--space-3); flex-wrap: wrap; align-items: center; margin-bottom: var(--space-3); }
+.line-add { display: flex; gap: 8px; flex: 1 1 320px; }
+.line-add select { flex: 1; min-width: 0; }
+.line-add button { flex: 0 0 auto; white-space: nowrap; }
+#set-row { flex: 0 1 300px; }
+
+.line-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px;
+  background: var(--glass-solid); border: 1px solid rgba(255,255,255,0.7); border-radius: var(--radius-md); overflow: hidden; }
+.line-table th {
+  text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600;
+  color: var(--slate); padding: 8px 10px; border-bottom: 1px solid var(--rule); background: rgba(255,255,255,0.5);
+}
+.line-table th.lt-num, .line-table td.lt-num { text-align: right; }
+.line-table td { padding: 8px 6px; border-bottom: 1px solid var(--rule-soft); vertical-align: middle; }
+.line-table td.lt-desc { padding-left: 10px; }
+.line-table tr:last-child td { border-bottom: 0; }
+.line-table tr { animation: rise var(--fast) var(--ease-out); }
+.lt-desc { width: auto; }
+.lt-tag { font-size: 11px; color: var(--slate); margin-top: 2px; }
+.lt-tag-warn { color: var(--gold-deep); font-weight: 600; }
+.lt-num { width: 1%; white-space: nowrap; }
+.lt-x { width: 1%; text-align: center; padding-right: 8px; }
+.lt-input {
+  width: 84px; min-height: 34px; padding: 4px 6px; text-align: right;
+  font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 13px;
+  -moz-appearance: textfield;
+}
+.lt-input::-webkit-outer-spin-button, .lt-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.lt-input:disabled { background: transparent; border-color: transparent; }
+.lt-amount { font-family: var(--mono); font-weight: 600; font-variant-numeric: tabular-nums; }
+.lt-remove {
+  width: 28px; height: 28px; min-height: 28px; padding: 0; border-radius: 50%;
+  font-size: 18px; line-height: 1; color: var(--slate);
+}
+.lt-remove:hover { color: var(--danger); border-color: rgba(214,72,60,0.35); background: var(--danger-tint); }
+@media (max-width: 900px) {
+  .lt-input { width: 64px; }
+}

@@ -124,19 +124,26 @@ function apportionDiscount(grossValues, discount) {
   return shares;
 }
 
-/* Discount is applied to the value *before* tax and pushed down into each
-   line, because Section 15(3) only excludes a discount from taxable value
-   when it is recorded on the invoice against the supply. A discount taken off
-   the grand total after tax would leave GST payable on money never collected.
+/* Discount is given per line — the counter knocks Rs 20 off *this* hot
+   plate, not off the bill — and is applied to the value *before* tax, because
+   Section 15(3) only excludes a discount from taxable value when it is
+   recorded on the invoice against the supply. A discount taken off the grand
+   total after tax would leave GST payable on money never collected.
 
-   Two kinds of line are priced differently:
-   - `inclusive` lines were quoted with GST inside the price (the circular's
-     "amount incl. GST" column, or a product MRP). The basic value is backed
-     out as price / (1 + rate) and the tax is the remainder, so the line's
-     total is the price the customer was quoted, to the paisa.
-   - `nonGst` lines are refundable deposits: they print, they add to the
-     total, and they are outside GST — not taxable, not exempt, not in the
-     return. They carry no discount either. */
+   A line's discount is in the same basis as its rate: on an `inclusive` line
+   (price quoted with GST inside it) the discount comes off the quoted price
+   and the tax is re-derived from what the customer actually pays, so Rs 10
+   off a Rs 190 tube means Rs 180 paid, 152.54 + 27.46. On file the line's
+   discount is kept in the basic (pre-tax) basis, matching the Basic column
+   it prints beside.
+
+   `nonGst` lines are refundable deposits: they print, they add to the total,
+   and they are outside GST — not taxable, not exempt, not in the return.
+   They carry no discount either.
+
+   An invoice-level `discount` is still accepted and apportioned across lines
+   by basic value when no line carries its own; nothing on screen sends one
+   any more. */
 function computeInvoice(lines, supplierStateCode, placeOfSupplyCode, discount) {
   const intraState = supplierStateCode === placeOfSupplyCode;
   let taxable = 0;
@@ -144,21 +151,33 @@ function computeInvoice(lines, supplierStateCode, placeOfSupplyCode, discount) {
   let sgst = 0;
   let igst = 0;
   let nonGst = 0;
+  let totalDiscount = 0;
   const buckets = new Map();
 
   const quoted = lines.map(function (line) {
     return round2((Number(line.qty) || 0) * (Number(line.rate) || 0));
   });
-  // Basic (pre-tax) value of each GST line; zero for deposits so they take
-  // no share of the discount.
+  const factor = function (line) {
+    return line.inclusive ? 1 + (Number(line.gstRate) || 0) / 100 : 1;
+  };
+  // Basic (pre-tax) value of each GST line; zero for deposits.
   const basics = lines.map(function (line, i) {
-    if (line.nonGst) return 0;
-    const r = Number(line.gstRate) || 0;
-    return line.inclusive ? round2(quoted[i] / (1 + r / 100)) : quoted[i];
+    return line.nonGst ? 0 : round2(quoted[i] / factor(line));
   });
   const gross = round2(basics.reduce(function (a, b) { return a + b; }, 0));
-  discount = round2(Math.min(Math.max(Number(discount) || 0, 0), gross));
-  const shares = apportionDiscount(basics, discount);
+
+  // Per-line discounts, clamped to the line, in the line's own basis.
+  const anyLineDiscount = lines.some(function (l) { return !l.nonGst && Number(l.discount) > 0; });
+  let lineDiscounts = lines.map(function (line, i) {
+    if (line.nonGst) return 0;
+    return round2(Math.min(Math.max(Number(line.discount) || 0, 0), quoted[i]));
+  });
+  if (!anyLineDiscount) {
+    const invoiceLevel = round2(Math.min(Math.max(Number(discount) || 0, 0), gross));
+    // Apportioned in basic terms; converted to each line's basis below.
+    const shares = apportionDiscount(basics, invoiceLevel);
+    lineDiscounts = shares.map(function (s, i) { return round2(s * factor(lines[i])); });
+  }
 
   const priced = lines.map(function (line, i) {
     const gstRate = line.nonGst ? 0 : (Number(line.gstRate) || 0);
@@ -171,11 +190,20 @@ function computeInvoice(lines, supplierStateCode, placeOfSupplyCode, discount) {
       });
     }
 
-    const lineTotal = round2(basics[i] - shares[i]);
-    // Undiscounted inclusive lines land exactly on the quoted price.
-    const tax = (line.inclusive && shares[i] === 0)
-      ? round2(quoted[i] - basics[i])
-      : round2(lineTotal * gstRate / 100);
+    const net = round2(quoted[i] - lineDiscounts[i]);
+    let lineTotal;
+    let tax;
+    if (line.inclusive) {
+      // What the customer pays is the quoted price less the discount; the
+      // basic and the tax are both derived from that, so it lands exactly.
+      lineTotal = round2(net / factor(line));
+      tax = round2(net - lineTotal);
+    } else {
+      lineTotal = net;
+      tax = round2(lineTotal * gstRate / 100);
+    }
+    const discountBasic = round2(basics[i] - lineTotal);
+    totalDiscount += discountBasic;
 
     if (!buckets.has(gstRate)) {
       buckets.set(gstRate, { rate: gstRate, taxable: 0, cgst: 0, sgst: 0, igst: 0 });
@@ -201,7 +229,7 @@ function computeInvoice(lines, supplierStateCode, placeOfSupplyCode, discount) {
     }
     return Object.assign({}, line, {
       gross: basics[i],
-      discount: shares[i],
+      discount: discountBasic,
       lineTotal,
       taxAmount: tax,
       cgst: lineCgst,
@@ -229,12 +257,13 @@ function computeInvoice(lines, supplierStateCode, placeOfSupplyCode, discount) {
   sgst = round2(sgst);
   igst = round2(igst);
   nonGst = round2(nonGst);
+  totalDiscount = round2(totalDiscount);
 
   const beforeRounding = round2(taxable + cgst + sgst + igst + nonGst);
   const total = Math.round(beforeRounding);
   const rounding = round2(total - beforeRounding);
 
-  return { lines: priced, intraState, gross, discount, taxable, cgst, sgst, igst, nonGst, byRate, beforeRounding, rounding, total };
+  return { lines: priced, intraState, gross, discount: totalDiscount, taxable, cgst, sgst, igst, nonGst, byRate, beforeRounding, rounding, total };
 }
 
 /* The rate-wise breakup for an invoice already saved. Nothing stores it, but

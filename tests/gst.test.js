@@ -316,4 +316,51 @@ test('validateGstin names the state', function () {
   assert.strictEqual(g.stateName('99'), null);
 });
 
+console.log('\nLine-wise discount');
+
+test('a discount on an exclusive line comes off that line before tax', function () {
+  const r = g.computeInvoice([
+    { qty: 1, rate: 200, gstRate: 18, discount: 20 },
+    { qty: 1, rate: 50, gstRate: 18 }
+  ], '23', '23');
+  assert.strictEqual(r.lines[0].lineTotal, 180);
+  assert.strictEqual(r.lines[0].taxAmount, 32.4);
+  assert.strictEqual(r.lines[0].discount, 20);
+  assert.strictEqual(r.lines[1].discount, 0, 'the other line is untouched');
+  assert.strictEqual(r.discount, 20);
+  assert.strictEqual(r.taxable, 230);
+});
+
+test('a discount on an inclusive line comes off the quoted price and the tax follows', function () {
+  // Rs 10 off a Rs 190 tube: customer pays 180 = 152.54 + 27.46.
+  const r = g.computeInvoice([{ qty: 1, rate: 190, gstRate: 18, inclusive: true, discount: 10 }], '23', '23');
+  assert.strictEqual(r.lines[0].lineWithTax, 180);
+  assert.strictEqual(r.lines[0].lineTotal, 152.54);
+  assert.strictEqual(r.lines[0].taxAmount, 27.46);
+  // On file, the discount is in basic terms so it prints beside Basic.
+  assert.strictEqual(r.lines[0].gross, 161.02);
+  assert.strictEqual(r.lines[0].discount, 8.48);
+});
+
+test('a deposit takes no discount whatever is typed', function () {
+  const r = g.computeInvoice([{ qty: 1, rate: 2200, nonGst: true, discount: 100 }], '23', '23');
+  assert.strictEqual(r.lines[0].discount, 0);
+  assert.strictEqual(r.total, 2200);
+});
+
+test('a discount larger than the line is clamped to it', function () {
+  const r = g.computeInvoice([{ qty: 2, rate: 100, gstRate: 18, discount: 5000 }], '23', '23');
+  assert.strictEqual(r.lines[0].lineTotal, 0);
+  assert.strictEqual(r.lines[0].discount, 200);
+});
+
+test('when lines carry discounts, an invoice-level one is ignored', function () {
+  const r = g.computeInvoice([
+    { qty: 1, rate: 100, gstRate: 18, discount: 10 },
+    { qty: 1, rate: 100, gstRate: 18 }
+  ], '23', '23', 50);
+  assert.strictEqual(r.discount, 10);
+  assert.strictEqual(r.taxable, 190);
+});
+
 console.log('\n' + passed + ' passed\n');

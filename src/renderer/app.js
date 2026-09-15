@@ -77,7 +77,6 @@ async function loadForEdit(id) {
   $('customer-mobile').value = inv.customer_mobile || '';
   $('customer-gstin').value = inv.customer_gstin || '';
   showManualEntry('');
-  $('t-discount').value = inv.discount > 0 ? String(inv.discount) : '';
   lines = inv.lines.map(function (l) {
     const current = charges.find(function (c) { return c.description === l.description; });
     return {
@@ -88,6 +87,9 @@ async function loadForEdit(id) {
       hsnSac: l.hsn_sac || null,
       inclusive: !!l.inclusive,
       nonGst: !!l.non_gst,
+      // Stored in basic terms; on an inclusive line the operator typed it
+      // against the quoted price, so scale it back up for editing.
+      discount: l.inclusive ? Math.round(l.discount * (1 + l.gst_rate / 100) * 100) / 100 : (l.discount || 0),
       needsConfirmation: !!(current && current.needs_confirmation)
     };
   });
@@ -307,7 +309,6 @@ function wire() {
     $('gstin-result').className = 'hint';
   });
 
-  $('t-discount').addEventListener('input', function () { recalc(); });
   $('save').addEventListener('click', function () { submit(false); });
   $('save-print').addEventListener('click', function () { submit(true); });
 
@@ -382,6 +383,7 @@ function addLine(charge) {
     hsnSac: charge.hsn_sac || null,
     inclusive: !!charge.price_includes_gst,
     nonGst: charge.kind === 'deposit',
+    discount: 0,
     needsConfirmation: !!charge.needs_confirmation
   });
 
@@ -390,59 +392,101 @@ function addLine(charge) {
 }
 
 function render() {
-  const list = $('line-list');
-  list.innerHTML = '';
+  const body = $('line-rows');
+  body.innerHTML = '';
+  $('line-table').hidden = lines.length === 0;
   $('lines-empty').hidden = lines.length > 0;
 
   lines.forEach(function (line, index) {
-    const li = document.createElement('li');
-    li.className = 'line-item';
+    const tr = document.createElement('tr');
 
-    const desc = document.createElement('div');
-    desc.className = 'line-desc';
-    desc.textContent = line.description;
-    if (line.needsConfirmation) {
-      const warn = document.createElement('span');
-      warn.className = 'line-warn';
-      warn.textContent = 'Rate not yet confirmed';
-      desc.appendChild(warn);
-    }
+    const desc = document.createElement('td');
+    desc.className = 'lt-desc';
+    const name = document.createElement('div');
+    name.textContent = line.description;
+    desc.appendChild(name);
+    const tags = [];
+    if (line.nonGst) tags.push('no GST');
+    else tags.push(line.gstRate + '% GST' + (line.inclusive ? ' included' : ''));
+    if (line.needsConfirmation) tags.push('rate not confirmed');
+    const tag = document.createElement('div');
+    tag.className = 'lt-tag' + (line.needsConfirmation ? ' lt-tag-warn' : '');
+    tag.textContent = tags.join(' · ');
+    desc.appendChild(tag);
 
-    const minus = document.createElement('button');
-    minus.type = 'button';
-    minus.className = 'step';
-    minus.textContent = '−';
-    minus.setAttribute('aria-label', 'Reduce ' + line.description);
-    minus.addEventListener('click', function () {
-      lines[index].qty--;
-      if (lines[index].qty < 1) lines.splice(index, 1);
+    /* Qty, rate and discount are typed on the line itself. Changes update
+       the figures in place rather than rebuilding the table, so the cursor
+       stays where the operator put it. */
+    const qty = numberCell(line.qty, 1, 1, function (v) { lines[index].qty = Math.max(1, Math.round(v)); });
+    const rate = numberCell(line.rate, 0, 0.01, function (v) { lines[index].rate = v; });
+    const disc = numberCell(line.discount || 0, 0, 0.01, function (v) { lines[index].discount = v; });
+    disc.input.placeholder = '0.00';
+    if (line.nonGst) { disc.input.disabled = true; disc.input.value = ''; }
+
+    const amount = document.createElement('td');
+    amount.className = 'lt-num lt-amount';
+
+    const update = function () {
+      amount.textContent = money(lineAmount(lines[index]));
+      recalc();
+      syncDirty();
+    };
+    [qty, rate, disc].forEach(function (c) { c.onChange = update; });
+    update();
+
+    const remove = document.createElement('td');
+    remove.className = 'lt-x';
+    const x = document.createElement('button');
+    x.type = 'button';
+    x.className = 'lt-remove';
+    x.textContent = '×';
+    x.setAttribute('aria-label', 'Remove ' + line.description);
+    x.addEventListener('click', function () {
+      lines.splice(index, 1);
       render();
     });
+    remove.appendChild(x);
 
-    const qty = document.createElement('span');
-    qty.className = 'line-qty';
-    qty.textContent = String(line.qty);
-
-    const plus = document.createElement('button');
-    plus.type = 'button';
-    plus.className = 'step';
-    plus.textContent = '+';
-    plus.setAttribute('aria-label', 'Add another ' + line.description);
-    plus.addEventListener('click', function () {
-      lines[index].qty++;
-      render();
-    });
-
-    const amount = document.createElement('span');
-    amount.className = 'line-amount';
-    amount.textContent = money(line.qty * line.rate);
-
-    li.append(desc, minus, qty, plus, amount);
-    list.appendChild(li);
+    tr.append(desc, qty.td, rate.td, disc.td, amount, remove);
+    body.appendChild(tr);
   });
 
   recalc();
   syncDirty();
+}
+
+/* What this line comes to in its own basis: qty × rate less its discount.
+   Inclusive items show the price the customer sees; others show the basic. */
+function lineAmount(line) {
+  const q = Number(line.qty) || 0;
+  const r = Number(line.rate) || 0;
+  const d = line.nonGst ? 0 : (Number(line.discount) || 0);
+  return Math.max(0, q * r - d);
+}
+
+function numberCell(value, min, step, commit) {
+  const td = document.createElement('td');
+  td.className = 'lt-num';
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.min = String(min);
+  input.step = String(step);
+  input.inputMode = 'decimal';
+  input.className = 'lt-input';
+  input.value = step === 1 ? String(value) : (value ? money(value) : '');
+  const cell = { td: td, input: input, onChange: null };
+  input.addEventListener('input', function () {
+    const v = parseFloat(input.value);
+    commit(isNaN(v) ? min : Math.max(min, v));
+    if (cell.onChange) cell.onChange();
+  });
+  input.addEventListener('blur', function () {
+    const v = parseFloat(input.value);
+    if (step !== 1) input.value = isNaN(v) || v <= 0 ? (min > 0 ? money(min) : '') : money(Math.max(min, v));
+    else input.value = String(isNaN(v) ? min : Math.max(min, Math.round(v)));
+  });
+  td.appendChild(input);
+  return cell;
 }
 
 function syncDirty() {
@@ -477,16 +521,12 @@ function renderTaxRows(byRate, intraState) {
   }
 }
 
-function discountValue() {
-  const n = Number($('t-discount').value);
-  return n > 0 ? n : 0;
-}
-
 async function recalc() {
   if (lines.length === 0) {
     totals = null;
     $('t-gross').textContent = '0.00';
     $('t-taxable').textContent = '0.00';
+    $('t-discount-row').hidden = true;
     $('t-deposits-row').hidden = true;
     $('t-rounding').textContent = '0.00';
     renderTaxRows([], true);
@@ -495,8 +535,10 @@ async function recalc() {
     return;
   }
 
-  totals = await unwrap(window.api.compute(lines, distributor.state_code, distributor.state_code, discountValue()));
+  totals = await unwrap(window.api.compute(lines, distributor.state_code, distributor.state_code, 0));
   $('t-gross').textContent = money(totals.gross);
+  $('t-discount').textContent = money(totals.discount);
+  $('t-discount-row').hidden = !(totals.discount > 0);
   $('t-taxable').textContent = money(totals.taxable);
   $('t-deposits').textContent = money(totals.nonGst);
   $('t-deposits-row').hidden = !(totals.nonGst > 0);
@@ -572,7 +614,6 @@ async function submit(thenPrint) {
       place_of_supply: distributor.state_name,
       place_of_supply_code: distributor.state_code,
       invoice_date: editing ? editing.invoice_date : new Date().toISOString(),
-      discount: discountValue(),
       lines: lines
     };
     saved = editing
@@ -610,7 +651,7 @@ async function renderPrintable(invoice) {
 
 async function reset() {
   lines = [];
-  ['consumer-no', 'customer-name', 'customer-address', 'customer-mobile', 'customer-gstin', 't-discount']
+  ['consumer-no', 'customer-name', 'customer-address', 'customer-mobile', 'customer-gstin']
     .forEach(function (id) { $(id).value = ''; });
   $('customer-card').hidden = true;
   $('customer-fields').hidden = true;

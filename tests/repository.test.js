@@ -559,4 +559,24 @@ test('an invoice without a mobile stores null, and the register shows blank', fu
   assert.strictEqual(reports.invoiceRegister([inv])[0]['Mobile'], '');
 });
 
+console.log('\nLine-wise discount on file');
+
+test('each line keeps its own discount and the invoice total discount is their sum', function () {
+  const { repo } = freshRepo();
+  const inv = repo.saveInvoice(customer({ invoice_date: '2026-09-03', lines: [
+    { description: 'Hot plate', qty: 1, rate: 2400, gstRate: 18, discount: 100, hsnSac: '7321' },
+    { description: 'Hose', qty: 1, rate: 190, gstRate: 18, inclusive: true, discount: 10 },
+    { description: 'DGCC', qty: 1, rate: 50, gstRate: 18 }
+  ] }));
+  const by = {};
+  inv.lines.forEach(function (l) { by[l.description] = l; });
+  assert.strictEqual(by['Hot plate'].discount, 100);
+  assert.strictEqual(by['Hot plate'].line_total, 2300);
+  assert.strictEqual(by['Hose'].discount, 8.48);
+  assert.strictEqual(by['Hose'].line_total, 152.54);
+  assert.strictEqual(by['DGCC'].discount, 0);
+  assert.strictEqual(inv.discount, 108.48);
+  assert.strictEqual(inv.taxable_value, 2502.54);
+});
+
 console.log('\n' + passed + ' passed\n');

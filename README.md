@@ -6,7 +6,7 @@ service charges. No server, no hosting, no internet needed to run.
 ## Running it
 
     npm install
-    npm test          # 112 fast tests
+    npm test          # 118 fast tests
     npm run test:all  # adds 3 OCR tests (~10s, needs eng.traineddata)
     npm start         # run the app
     npm run dist      # build the Windows NSIS installer
@@ -111,6 +111,10 @@ over. The acknowledgement wording is set during setup and stored per
 distributor — have a CA check it.
 
 ## Keyboard
+
+Lines are a table with quantity, rate and discount typed in place; the rate
+is that invoice's rate and does not change the item's price on file. One
+toolbar above it adds an item or a whole set.
 
 The billing screen is built to be worked without a mouse.
 
@@ -439,14 +443,20 @@ prints the bundled Bharatgas mark; `distributor:get` fills it in.
 
 ## Discount
 
-The billing screen takes one invoice-level discount in rupees. It is applied
-to the value **before tax** and pushed down into each line in proportion to
-the line's gross value (`gst.apportionDiscount`, last line takes the paise
-remainder so the shares always add up exactly), and tax is then computed on
-the discounted taxable value. That order is not a preference: Section 15(3)
-only excludes a discount from taxable value when it is recorded on the invoice
-against the supply. A discount knocked off the grand total *after* tax would
-leave the agency paying GST on money it never collected.
+Discount is given **per line**, typed on the line itself along with quantity
+and rate — the counter knocks Rs 20 off *this* hot plate, not off the bill.
+It is applied to the value **before tax**: Section 15(3) only excludes a
+discount from taxable value when it is recorded on the invoice against the
+supply, and a discount taken off the grand total after tax would leave the
+agency paying GST on money it never collected.
+
+On an inclusive line the discount comes off the quoted price and the tax is
+re-derived from what the customer pays (Rs 10 off a Rs 190 tube is Rs 180 =
+152.54 + 27.46); on file the line's discount is kept in basic terms so it
+prints beside the Basic column. Deposits take none. The invoice's `discount`
+is the sum of its lines'. `computeInvoice` still accepts an invoice-level
+figure and apportions it when no line carries its own, but nothing on screen
+sends one any more.
 
 Storage keeps `invoice_lines.line_total` meaning "taxable value of the line",
 which is what every report already reads, so the reports needed no change.
